@@ -2,6 +2,10 @@
 #include <algorithm>
 #include <stdexcept>
 
+Node::Node(){
+    id = -1;
+}
+
 Node::Node(int id){
     this->id = id;
 }
@@ -27,10 +31,21 @@ const std::set<int> &Node::getNeighbours(){
     return neighbours;
 }
 
+int Node::getID(){
+    return id;
+}
+
 Graph::Graph(){}
 
+Graph::Graph(std::vector<std::vector<int>> idGraph){
+    nodes.resize(idGraph.size());
+    for (int i = 0; i < idGraph.size(); i++){
+        nodes[i] = Node(i, idGraph[i]);
+    }
+}
+
 Graph::Graph(std::vector<Node> nodes){
-    this->nodes.reserve(nodes.size());
+    this->nodes.resize(nodes.size());
     for (auto node : nodes){
         checkID(node.getID(), OUT_OF_SIZE);
         nodes[node.getID()] = node;

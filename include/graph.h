@@ -4,6 +4,7 @@
 
 class Node{
     public:
+        Node();
         Node(int id);
         Node(int id, std::vector<int> neighbours);
         void addNeighbour(int id);
@@ -24,6 +25,7 @@ enum CheckIDVariant {
 class Graph{
     public:
         Graph();
+        Graph(std::vector<std::vector<int>> idGraph);
         Graph(std::vector<Node> nodes);
         void separate(int id);
         void insertNode(Node node);
