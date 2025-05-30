@@ -47,6 +47,7 @@ void Graph::separate(int separated_id){
 
 void Graph::insertNode(Node node){
     checkID(node.getID(), OUT_OF_SIZE);
+    separate(node.getID());
     nodes[node.getID()] = node;
 }
 
