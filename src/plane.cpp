@@ -20,18 +20,18 @@ void Plane::setSpots(std::vector<Spot> spots){
     }
 }
 
-double Plane::getWidth(){
+double Plane::getWidth() const{
     return width;
 }
 
-double Plane::getHeight(){
+double Plane::getHeight() const{
     return height;
 }
 
-int Plane::getSpotsNumber(){
+int Plane::getSpotsNumber() const{
     return spots.size();
 }
 
-const std::vector<Spot> &Plane::getSpots(){
+const std::vector<Spot> &Plane::getSpots() const{
     return spots;
 }
