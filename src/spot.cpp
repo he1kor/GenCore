@@ -12,6 +12,22 @@ Spot::Spot(double x, double y, int id){
     this->id = id;
 }
 
+void Spot::setX(double x){
+    this->x = x;
+}
+
+void Spot::setY(double y){
+    this->y = y;
+}
+
+void Spot::changeX(double dx){
+    x += dx;
+}
+
+void Spot::changeY(double dy){
+    y += dy;
+}
+
 double Spot::getX(){
     return x;
 }
