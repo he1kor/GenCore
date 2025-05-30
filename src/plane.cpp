@@ -10,7 +10,7 @@ void Plane::addSpot(Spot spot){
     if (spot.getID() > ID_LIMIT)
         throw std::runtime_error("ID limit reached");
     if (spot.getID() > getSpotsNumber())
-        spots.reserve(spot.getID());
+        spots.resize(spot.getID());
     spots[spot.getID()] = spot;
 }
 
