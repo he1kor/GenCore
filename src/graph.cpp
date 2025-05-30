@@ -78,3 +78,7 @@ void Graph::checkID(int id, CheckIDVariant checkIDVariant){
         }
     }
 }
+
+int Graph::size() const{
+    return nodes.size();
+}

@@ -29,6 +29,7 @@ class Graph{
         Graph(std::vector<Node> nodes);
         void separate(int id);
         void insertNode(Node node);
+        int size() const;
     private:
         //indexed by ID
         std::vector<Node> nodes;
