@@ -28,15 +28,15 @@ void Spot::changeY(double dy){
     y += dy;
 }
 
-double Spot::getX(){
+double Spot::getX() const{
     return x;
 }
 
-double Spot::getY(){
+double Spot::getY() const{
     return y;
 }
 
-int Spot::getID(){
+int Spot::getID() const{
     return id;
 }
 

@@ -9,9 +9,9 @@ class Spot{
         void setY(double y);
         void changeX(double dx);
         void changeY(double dy);
-        double getX();
-        double getY();
-        int getID();
+        double getX() const;
+        double getY() const;
+        int getID() const;
         std::pair<double, double> getCoords();
     private:
         double x;
