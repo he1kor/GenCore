@@ -8,6 +8,7 @@ class Plane{
     public:
         Plane(double width, double height);
         void addSpot(Spot spot);
+        void addSpot(double x, double y);
         void setSpots(std::vector<Spot> spots);
         double getWidth() const;
         double getHeight() const;

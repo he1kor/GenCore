@@ -14,6 +14,10 @@ void Plane::addSpot(Spot spot){
     spots[spot.getID()] = spot;
 }
 
+void Plane::addSpot(double x, double y){
+    spots.push_back(Spot(x, y, getSpotsNumber()-1));
+}
+
 void Plane::setSpots(std::vector<Spot> spots){
     for (auto spot : spots){
         addSpot(spot);
