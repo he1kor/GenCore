@@ -1,5 +1,11 @@
 #include "spot.h"
 
+Spot::Spot(){
+    x = -1;
+    y = -1;
+    id = -1;
+}
+
 Spot::Spot(double x, double y, int id){
     this->x = x;
     this->y = y;

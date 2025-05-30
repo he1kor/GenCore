@@ -3,6 +3,7 @@
 
 class Spot{
     public:
+        Spot();
         Spot(double x, double y, int id);
         double getX();
         double getY();
