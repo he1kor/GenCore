@@ -60,6 +60,10 @@ void Graph::separate(int separated_id){
     nodes[separated_id].clearNeighbours();
 }
 
+Node &Graph::getNode(int id) const{
+    nodes[id];
+}
+
 void Graph::insertNode(Node node){
     checkID(node.getID(), OUT_OF_SIZE);
     separate(node.getID());

@@ -28,6 +28,7 @@ class Graph{
         Graph(std::vector<std::vector<int>> idGraph);
         Graph(std::vector<Node> nodes);
         void separate(int id);
+        Node& getNode(int id) const;
         void insertNode(Node node);
         int size() const;
     private:
