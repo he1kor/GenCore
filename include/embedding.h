@@ -5,6 +5,7 @@
 
 class EmbeddablePlane : public Plane{
     public:
-        //void embedGraph(const Graph& graph);
+        using Plane::Plane;
+        void embedGraph(const Graph& graph);
         void embedNode(Node node, double x, double y);
 };
