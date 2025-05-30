@@ -27,11 +27,11 @@ void Node::clearNeighbours(){
     neighbours.clear();
 }
 
-const std::set<int> &Node::getNeighbours(){
+const std::set<int> &Node::getNeighbours() const{
     return neighbours;
 }
 
-int Node::getID(){
+int Node::getID() const{
     return id;
 }
 

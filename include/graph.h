@@ -10,8 +10,8 @@ class Node{
         void addNeighbour(int id);
         void removeNeighbour(int id);
         void clearNeighbours();
-        const std::set<int>& getNeighbours();
-        int getID();
+        const std::set<int>& getNeighbours() const;
+        int getID() const;
     private:
         int id;
         std::set<int> neighbours;
