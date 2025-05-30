@@ -1,4 +1,5 @@
 #include "graph.h"
+#include <algorithm>
 
 Node::Node(int id){
     this->id = id;

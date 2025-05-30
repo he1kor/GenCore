@@ -12,4 +12,4 @@ class Node{
     private:
         int id;
         std::vector<int> neighbours;
-}
+};
