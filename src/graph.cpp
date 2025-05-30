@@ -54,14 +54,14 @@ Graph::Graph(std::vector<Node> nodes){
 
 void Graph::separate(int separated_id){
     checkID(separated_id, NON_EXISTING);
-    for (int node_id : nodes[separated_id].getNeighbours()){
+    for (int node_id : nodes[separated_id].getNeighbours()){ 
         nodes[node_id].removeNeighbour(separated_id);
     }
     nodes[separated_id].clearNeighbours();
 }
 
-Node &Graph::getNode(int id) const{
-    nodes[id];
+const Node &Graph::getNode(int id) const{
+    return nodes[id];
 }
 
 void Graph::insertNode(Node node){
