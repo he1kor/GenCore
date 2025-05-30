@@ -12,7 +12,7 @@ class Plane{
         double getWidth();
         double getHeight();
         int getSpotsNumber();
-        const std::vector<Spot>& getSpots;
+        const std::vector<Spot>& getSpots();
     private:
         std::vector<Spot> spots;
         double width;

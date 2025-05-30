@@ -31,3 +31,7 @@ double Plane::getHeight(){
 int Plane::getSpotsNumber(){
     return spots.size();
 }
+
+const std::vector<Spot> &Plane::getSpots(){
+    return spots;
+}
