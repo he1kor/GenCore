@@ -16,7 +16,7 @@ void Node::addNeighbour(int id){
 }
 
 void Node::removeNeighbour(int id){
-    neighbours.erase(std::remove(neighbours.begin(), neighbours.end(), id), neighbours.end());
+    neighbours.erase(id);
 }
 
 void Node::clearNeighbours(){
