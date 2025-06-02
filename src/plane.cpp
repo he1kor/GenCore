@@ -24,6 +24,34 @@ void Plane::setSpots(std::vector<Spot> spots){
     }
 }
 
+void Plane::setUpperY(double upperY){
+    this->upperY = upperY;
+}
+
+void Plane::setLeftX(double leftX){
+    this->leftX = leftX;
+}
+
+double Plane::getUpperY(){
+    return upperY;
+}
+
+double Plane::getBottomY(){
+    return upperY + height;
+}
+
+double Plane::getLeftX(){
+    return leftX;
+}
+
+double Plane::getRightX(){
+    return leftX + width;
+}
+
+void Plane::clear(){
+    spots.clear();
+}
+
 double Plane::getWidth() const{
     return width;
 }

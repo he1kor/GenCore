@@ -10,12 +10,21 @@ class Plane{
         void addSpot(Spot spot);
         void addSpot(double x, double y);
         void setSpots(std::vector<Spot> spots);
+        void setUpperY(double upperY);
+        void setLeftX(double leftX);
+        double getUpperY();
+        double getBottomY();
+        double getLeftX();
+        double getRightX();
+        void clear();
         double getWidth() const;
         double getHeight() const;
         int getSpotsNumber() const;
         const std::vector<Spot>& getSpots() const;
     private:
         std::vector<Spot> spots;
+        double leftX = 0;
+        double upperY = 0;
         double width;
         double height;
 };
