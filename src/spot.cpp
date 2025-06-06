@@ -40,6 +40,6 @@ int Spot::getID() const{
     return id;
 }
 
-std::pair<double, double> Spot::getCoords(){
+Point2 Spot::getCoords(){
     return {x, y};
 }

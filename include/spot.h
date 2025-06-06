@@ -1,6 +1,11 @@
 #pragma once
 #include <utility>
 
+struct Point2{
+    double x = 0;
+    double y = 0;
+};
+
 class Spot{
     public:
         Spot();
@@ -9,10 +14,10 @@ class Spot{
         void setY(double y);
         void changeX(double dx);
         void changeY(double dy);
+        Point2 getCoords();
         double getX() const;
         double getY() const;
         int getID() const;
-        std::pair<double, double> getCoords();
     private:
         double x;
         double y;
