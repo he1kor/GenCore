@@ -109,6 +109,10 @@ void EmbeddablePlane::embedNode(Node node, double x, double y){
     addSpot(Spot(x, y, node.getID()));
 }
 
+void EmbeddablePlane::embed(const Graph *graph){
+    
+}
+
 bool EmbeddablePlane::isEmbedding(){
     return currentIteration != -1;
 }

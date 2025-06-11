@@ -1,5 +1,15 @@
 #pragma once
 
+
+
+#include <iostream>
+#include <vector>
+#include <list>
+#include <algorithm>
+#include <memory>
+#include <unordered_map>
+#include <stack>
+
 #include "graph.h" 
 #include "plane.h"
 
@@ -10,6 +20,7 @@ class EmbeddablePlane : public Plane{
         bool stepForceDirected();
         bool stepForceDirectedStable();
         void embedNode(Node node, double x, double y);
+        void embed(const Graph *graph);
         bool isEmbedding();
     private:
         Point2 getClosestPointOnEdge(const Point2 point, const Point2 end1, const Point2 end2);
@@ -19,7 +30,7 @@ class EmbeddablePlane : public Plane{
         int currentIteration = -1;
         const int iterationsMax = 500;
         const int repulsionEdgeIterationsMax = 500;
-        const int repulsionIterationsMax = 500;
+        const int repulsionIterationsMax = 600;
         const double minDistanceRepulsion = 2.0;
         const double kEdgeRepulsion = 5.0f;
         const double kRepulsion = 15.0;
