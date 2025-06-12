@@ -27,12 +27,14 @@ class Graph{
         Graph();
         Graph(std::vector<std::vector<int>> idGraph);
         Graph(std::vector<Node> nodes);
-        void separate(int id);
+        virtual void removeEdge(int node1, int node2);
+        virtual void separate(int id);
         const Node& getNode(int id) const;
-        void insertNode(Node node);
+        const std::set<int>& getNeighbours(int id) const;
         int size() const;
-    private:
+    protected:
         //indexed by ID
         std::vector<Node> nodes;
+    private:
         void checkID(int id, CheckIDVariant checkIDVariant);
 };

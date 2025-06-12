@@ -52,6 +52,11 @@ Graph::Graph(std::vector<Node> nodes){
     }
 }
 
+void Graph::removeEdge(int node1, int node2){
+    nodes.at(node1).removeNeighbour(node2);
+    nodes.at(node2).removeNeighbour(node1);
+}
+
 void Graph::separate(int separated_id){
     checkID(separated_id, NON_EXISTING);
     for (int node_id : nodes[separated_id].getNeighbours()){ 
@@ -64,10 +69,8 @@ const Node &Graph::getNode(int id) const{
     return nodes[id];
 }
 
-void Graph::insertNode(Node node){
-    checkID(node.getID(), OUT_OF_SIZE);
-    separate(node.getID());
-    nodes[node.getID()] = node;
+const std::set<int> &Graph::getNeighbours(int id) const{
+    return getNode(id).getNeighbours();
 }
 
 void Graph::checkID(int id, CheckIDVariant checkIDVariant){
