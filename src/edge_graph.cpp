@@ -26,14 +26,15 @@ EdgeGraph::EdgeGraph(std::vector<Node> nodes) : Graph(nodes){
 
 void EdgeGraph::removeEdge(int node1, int node2){
     Graph::removeEdge(node1, node2);
-    edgeIDs.erase(std::make_pair(node1, node2));
-    edgeIDs.erase(std::make_pair(node2, node1));
+    edgeIDs.erase({node1, node2});
+    edgeIDs.erase({node2, node1});
 }
+
 
 void EdgeGraph::separate(int id){
     for (int neighbourID : getNeighbours(id)){
-        edgeIDs.erase(std::make_pair(neighbourID, id));
-        edgeIDs.erase(std::make_pair(id, neighbourID));
+        edgeIDs.erase({neighbourID, id});
+        edgeIDs.erase({id, neighbourID});
     }
     Graph::separate(id);
 }
