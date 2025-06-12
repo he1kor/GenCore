@@ -8,6 +8,7 @@ class EdgeGraph : public Graph{
         EdgeGraph(std::vector<Node> nodes);
         void separate(int id) override;
         void removeEdge(int node1, int node2) override;
+        int getEdgeID(int node1, int node2) const;
     private:
         std::unordered_map<std::pair<int, int>, int> edgeIDs;
         void initializeEdgeIDs();

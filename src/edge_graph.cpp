@@ -30,6 +30,9 @@ void EdgeGraph::removeEdge(int node1, int node2){
     edgeIDs.erase({node2, node1});
 }
 
+int EdgeGraph::getEdgeID(int node1, int node2) const{
+    return edgeIDs.at({node1, node2});
+}
 
 void EdgeGraph::separate(int id){
     for (int neighbourID : getNeighbours(id)){
