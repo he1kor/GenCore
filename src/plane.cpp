@@ -64,6 +64,10 @@ int Plane::getSpotsNumber() const{
     return spots.size();
 }
 
+Spot Plane::getSpot(int i){
+    return spots.at(i);
+}
+
 const std::vector<Spot> &Plane::getSpots() const{
     return spots;
 }
