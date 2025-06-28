@@ -1,15 +1,17 @@
 #pragma once
 #include <utility>
+#include <memory>
 
-struct Point2{
+struct Point2 {
     double x = 0;
     double y = 0;
 };
 
-class Spot{
+template<typename T>
+class Spot {
     public:
         Spot();
-        Spot(double x, double y, int id);
+        Spot(double x, double y, std::shared_ptr<T> t_ptr);
         void setX(double x);
         void setY(double y);
         void changeX(double dx);
@@ -17,9 +19,56 @@ class Spot{
         Point2 getCoords();
         double getX() const;
         double getY() const;
-        int getID() const;
+        std::shared_ptr<T> getValue() const;
+        
     private:
         double x;
         double y;
-        int id;
+        std::shared_ptr<T> t_ptr;
 };
+
+template <typename T>
+Spot<T>::Spot() : x(-1), y(-1), t_ptr(nullptr) {}
+
+template <typename T>
+Spot<T>::Spot(double x, double y, std::shared_ptr<T> t_ptr) : x(x), y(y), t_ptr(t_ptr) {}
+
+template <typename T>
+void Spot<T>::setX(double x) {
+    this->x = x;
+}
+
+template <typename T>
+void Spot<T>::setY(double y) {
+    this->y = y;
+}
+
+template <typename T>
+void Spot<T>::changeX(double dx) {
+    x += dx;
+}
+
+template <typename T>
+void Spot<T>::changeY(double dy) {
+    y += dy;
+}
+
+template <typename T>
+double Spot<T>::getX() const {
+    return x;
+}
+
+template <typename T>
+double Spot<T>::getY() const {
+    return y;
+}
+
+template <typename T>
+std::shared_ptr<T> Spot<T>::getValue() const {
+    return t_ptr;
+}
+
+template <typename T>
+Point2 Spot<T>::getCoords() {
+    return {x, y};
+}
