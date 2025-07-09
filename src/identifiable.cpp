@@ -1,5 +1,5 @@
 #include "identifiable.h"
 
-int Identifiable::getID(){
+int Identifiable::getID() const{
     return id;
 }
