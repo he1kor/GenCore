@@ -8,6 +8,7 @@ constexpr int ID_LIMIT = 1000;
 template<typename T>
 class Plane {
 public:
+    static_assert(std::is_base_of_v<Identifiable, T>, "T must inherit from Identifiable");
     Plane(double width, double height) : width(width), height(height) {}
     
     void addSpot(Spot<T> spot) {

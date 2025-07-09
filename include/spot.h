@@ -9,6 +9,7 @@ struct Point2 {
 
 template<typename T>
 class Spot {
+    static_assert(std::is_base_of_v<Identifiable, T>, "T must inherit from Identifiable");
     public:
         Spot();
         Spot(double x, double y, std::shared_ptr<T> t_ptr);

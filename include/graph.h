@@ -1,20 +1,25 @@
 #pragma once
+
 #include <vector>
 #include <set>
 
+#include "identifiable.h"
+
+template<typename T>
 class Node{
+    static_assert(std::is_base_of_v<Identifiable, T>, "T must inherit from Identifiable");
     public:
         Node();
-        Node(int id);
-        Node(int id, std::vector<int> neighbours);
-        void addNeighbour(int id);
-        void removeNeighbour(int id);
+        Node(const T& id);
+        Node(const T& t, std::vector<Identifiable> neighbours);
+        void addNeighbour(const T& t);
+        void removeNeighbour(const T& t);
         void clearNeighbours();
-        const std::set<int>& getNeighbours() const;
+        const std::set<Identifiable>& getNeighbours() const;
         int getID() const;
     private:
-        int id;
-        std::set<int> neighbours;
+        T t;
+        std::set<Identifiable> neighbours;
 };
 
 enum CheckIDVariant {
@@ -34,7 +39,7 @@ class Graph{
         int size() const;
     protected:
         //indexed by ID
-        std::vector<Node> nodes;
+        std::unordered_map<int, T> nodes;
     private:
         void checkID(int id, CheckIDVariant checkIDVariant);
 };
