@@ -20,7 +20,7 @@ class EmbeddablePlane : public Plane<T>{
         void initEmbed(const Graph *graph);
         bool stepForceDirected();
         bool stepForceDirectedStable();
-        void embedNode(Node node, double x, double y);
+        void embedNode(Node<T> node, double x, double y);
         void embed(const Graph *graph);
         bool isEmbedding();
     private:
@@ -146,7 +146,7 @@ template<typename T> bool EmbeddablePlane<T>::stepForceDirectedStable(){
     return true;
 }
 
-template<typename T> void EmbeddablePlane<T>::embedNode(Node node, double x, double y){
+template<typename T> void EmbeddablePlane<T>::embedNode(Node<T> node, double x, double y){
     addSpot(Spot(x, y, node.getID()));
 }
 
