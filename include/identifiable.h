@@ -6,6 +6,7 @@ class Identifiable{
     protected:
         int id;
     public:
+        Identifiable(int id);
         virtual ~Identifiable() = default;
         int getID() const;
 };
