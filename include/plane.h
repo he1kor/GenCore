@@ -12,19 +12,18 @@ public:
     Plane(double width, double height) : width(width), height(height) {}
     
     void addSpot(Spot<T> spot) {
-        if (spot.getID() > ID_LIMIT)
-            throw std::runtime_error("ID limit reached");
-        if (spot.getID() >= getSpotsNumber())
-            spots.resize(spot.getID() + 1);
-        spots.at(spot.getID()) = spot;
+        spots[spot.getIdentifiable().getID()] = spot;
+        ids.insert(spot.getIdentifiable());
     }
     
-    void addSpot(double x, double y) {
-        spots.push_back(Spot<T>(x, y, getSpotsNumber()));
+    void addDummySpot(double x, double y) {
+        spots[dummy] = (Spot<T>(x, y));
+        ids.insert(dummy);
+        dummy++;
     }
     
-    void setSpots(std::vector<Spot<T>> spots) {
-        for (Spot<T> spot : spots) {
+    void addSpots(const std::vector<Spot<T>>& spots) {
+        for (const Spot<T>& spot : spots) {
             addSpot(spot);
         }
     }
@@ -55,6 +54,7 @@ public:
     
     void clear() {
         spots.clear();
+        ids.clear();
     }
     
     double getWidth() const {
@@ -69,18 +69,20 @@ public:
         return spots.size();
     }
     
-    Spot<T> getSpot(int i) {
-        return spots.at(i);
+    const Spot<T>& getSpot(Identifiable id) {
+        return spots.at(id);
     }
     
-    const std::vector<Spot<T>>& getSpots() const {
-        return spots;
+    const std::unordered_set<Identifiable>& getSpots() const {
+        return ids;
     }
 
 private:
-    std::vector<Spot<T>> spots;
+    std::unordered_map<Identifiable,Spot<T>,IDHash> spots;
+    std::unordered_set<Identifiable> ids;
     double leftX = 0;
     double upperY = 0;
     double width;
     double height;
+    int dummy = -10000;
 };
