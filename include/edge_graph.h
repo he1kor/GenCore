@@ -45,10 +45,12 @@ void EdgeGraph<NodeT, edgeT>::initializeEdgeIDs(){
                 continue;
             }
             edgeIDs[std::make_pair(node1.getID(), node2.getID())] = max_edge_id;
-            //TODO: basic constructor of EdgeT for each edgeID
+
+            edges[max_edge_id] = edgeT();
             max_edge_id++;
         }
     }
+    for ()
 }
 
 template<typename NodeT, typename edgeT>
