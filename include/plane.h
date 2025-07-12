@@ -2,6 +2,7 @@
 #include <vector>
 #include <stdexcept>
 #include "spot.h"
+#include <unordered_set>
 
 constexpr int ID_LIMIT = 1000;
 
@@ -73,13 +74,13 @@ public:
         return spots.at(id);
     }
     
-    const std::unordered_set<Identifiable>& getIDs() const {
+    const std::unordered_set<Identifiable, IDHash>& getIDs() const {
         return ids;
     }
 
 private:
     std::unordered_map<Identifiable,Spot<T>,IDHash> spots;
-    std::unordered_set<Identifiable> ids;
+    std::unordered_set<Identifiable, IDHash> ids;
     double leftX = 0;
     double upperY = 0;
     double width;
