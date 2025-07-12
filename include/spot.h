@@ -1,6 +1,7 @@
 #pragma once
 #include <utility>
 #include <memory>
+#include "identifiable.h"
 
 struct Point2 {
     double x = 0;
@@ -12,6 +13,7 @@ class Spot {
     static_assert(std::is_base_of_v<Identifiable, T>, "T must inherit from Identifiable");
     public:
         Spot();
+        Spot(double x, double y);
         Spot(double x, double y, std::shared_ptr<T> t_ptr);
         void setX(double x);
         void setY(double y);
@@ -21,6 +23,7 @@ class Spot {
         double getX() const;
         double getY() const;
         std::shared_ptr<T> getValue() const;
+        Identifiable getIdentifiable() const;
         
     private:
         double x;
@@ -30,6 +33,9 @@ class Spot {
 
 template <typename T>
 Spot<T>::Spot() : x(-1), y(-1), t_ptr(nullptr) {}
+
+template <typename T>
+Spot<T>::Spot(double x, double y) : x(x), y(y), t_ptr(nullptr) {}
 
 template <typename T>
 Spot<T>::Spot(double x, double y, std::shared_ptr<T> t_ptr) : x(x), y(y), t_ptr(t_ptr) {}
@@ -67,6 +73,11 @@ double Spot<T>::getY() const {
 template <typename T>
 std::shared_ptr<T> Spot<T>::getValue() const {
     return t_ptr;
+}
+
+template <typename T>
+Identifiable Spot<T>::getIdentifiable() const {
+    return *t_ptr;
 }
 
 template <typename T>
