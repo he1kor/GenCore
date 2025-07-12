@@ -7,7 +7,7 @@
 
 template<typename T>
 class Node{
-    static_assert(std::is_base_of_v<Identifiable, T>, "T must inherit from Identifiable");
+        static_assert(std::is_base_of_v<Identifiable, T>, "T must inherit from Identifiable");
     public:
         Node(const T& value);
         Node(const T& value, std::vector<Identifiable> neighbours);
@@ -40,7 +40,7 @@ class Graph{
         int size() const;
     protected:
         //indexed by ID
-        std::unordered_map<Identifiable, Node<T>> nodes;
+        std::unordered_map<Identifiable, Node<T>, IDHash> nodes;
     private:
 };
 
@@ -77,7 +77,7 @@ const std::set<Identifiable> &Node<T>::getNeighbours() const{
 
 template<typename T>
 Identifiable Node<T>::getID() const{
-    return id;
+    return value.getID();
 }
 
 
@@ -88,8 +88,8 @@ Graph<T>::Graph(){}
 
 template<typename T>
 Graph<T>::Graph(const std::vector<std::pair<T, std::vector<Identifiable>>>& rawGraph){
-    nodes.resize(idGraph.size());
-    for (int i = 0; i < idGraph.size(); i++){
+    nodes.reserve(rawGraph.size());
+    for (int i = 0; i < rawGraph.size(); i++){
         nodes[rawGraph[i].first] = Node(rawGraph[i].first, rawGraph[i].second);
     }
 }
@@ -110,7 +110,7 @@ void Graph<T>::removeEdge(Identifiable node1, Identifiable node2){
 
 template<typename T>
 void Graph<T>::separate(Identifiable separated_id){
-    for (int node_id : nodes.at(separated_id).getNeighbours()){ 
+    for (Identifiable node_id : nodes.at(separated_id).getNeighbours()){ 
         nodes[node_id].removeNeighbour(separated_id);
     }
     nodes[separated_id].clearNeighbours();
