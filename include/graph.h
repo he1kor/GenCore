@@ -9,6 +9,7 @@ template<typename T>
 class Node{
         static_assert(std::is_base_of_v<Identifiable, T>, "T must inherit from Identifiable");
     public:
+        Node();
         Node(const T& value);
         Node(const T& value, std::vector<Identifiable> neighbours);
         void addNeighbour(const Identifiable& id);
@@ -44,8 +45,12 @@ class Graph{
     private:
 };
 
-template<typename T>
-Node<T>::Node(const T& value){
+template <typename T>
+Node<T>::Node(){}
+
+template <typename T>
+Node<T>::Node(const T &value)
+{
     this->value = value;
 }
 
