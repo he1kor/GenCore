@@ -4,11 +4,19 @@
 
 class Identifiable{
     protected:
-        int id;
+        int id = -1;
     public:
         Identifiable(int id);
+        Identifiable() = default;
         virtual ~Identifiable() = default;
         int getID() const;
+        bool operator==(const Identifiable& other) const;
+        bool operator>(const Identifiable& other) const;
+        bool operator<(const Identifiable& other) const;
+        bool operator>=(const Identifiable& other) const;
+        bool operator<=(const Identifiable& other) const;
+        
+        bool operator!=(const Identifiable& other) const;
 };
 
 struct IDHash{
