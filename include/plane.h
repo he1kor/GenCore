@@ -11,7 +11,7 @@ public:
     static_assert(std::is_base_of_v<Identifiable, T>, "T must inherit from Identifiable");
     Plane(double width, double height) : width(width), height(height) {}
     
-    void addSpot(Spot<T> spot) {
+    void insertSpot(Spot<T> spot) {
         spots[spot.getIdentifiable().getID()] = spot;
         ids.push_back(spot.getIdentifiable());
     }
@@ -22,9 +22,17 @@ public:
         dummy++;
     }
     
-    void addSpots(const std::vector<Spot<T>>& spots) {
+    void setSpots(const std::vector<Spot<T>>& spots){
+        clear();
+        insertSpots(spots);
+    }
+    void updateSpots(const std::unordered_map<Identifiable, Spot<T>, IDHash>& spots){
+        this->spots = spots;
+    }
+
+    void insertSpots(const std::vector<Spot<T>>& spots) {
         for (const Spot<T>& spot : spots) {
-            addSpot(spot);
+            insertSpot(spot);
         }
     }
     
@@ -69,7 +77,7 @@ public:
         return spots.size();
     }
     
-    const Spot<T>& getSpot(Identifiable id) {
+    const Spot<T>& getSpot(Identifiable id) const {
         return spots.at(id);
     }
     
