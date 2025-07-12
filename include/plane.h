@@ -73,7 +73,7 @@ public:
         return spots.at(id);
     }
     
-    const std::unordered_set<Identifiable>& getSpots() const {
+    const std::unordered_set<Identifiable>& getIDs() const {
         return ids;
     }
 
