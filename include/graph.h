@@ -36,11 +36,13 @@ class Graph{
         Graph(std::vector<Node<T>> nodes);
         virtual void removeEdge(Identifiable node1, Identifiable node2);
         virtual void separate(Identifiable id);
+        int getSize() const;
         const Node<T>& getNode(Identifiable id) const;
         const std::set<Identifiable>& getNeighbours(Identifiable id) const;
+        const std::vector<Identifiable>& getIDs() const;
         int size() const;
     protected:
-        //indexed by ID
+        std::vector<Identifiable> ids;
         std::unordered_map<Identifiable, Node<T>, IDHash> nodes;
     private:
 };
@@ -49,8 +51,7 @@ template <typename T>
 Node<T>::Node(){}
 
 template <typename T>
-Node<T>::Node(const T &value)
-{
+Node<T>::Node(const T &value){
     this->value = value;
 }
 
@@ -82,9 +83,8 @@ const std::set<Identifiable> &Node<T>::getNeighbours() const{
 
 template<typename T>
 Identifiable Node<T>::getID() const{
-    return value.getID();
+    return value;
 }
-
 
 
 
@@ -94,16 +94,20 @@ Graph<T>::Graph(){}
 template<typename T>
 Graph<T>::Graph(const std::vector<std::pair<T, std::vector<Identifiable>>>& rawGraph){
     nodes.reserve(rawGraph.size());
+    ids.reserve(rawGraph.size());
     for (int i = 0; i < rawGraph.size(); i++){
         nodes[rawGraph[i].first] = Node(rawGraph[i].first, rawGraph[i].second);
+        ids.push_back(static_cast<Identifiable>(rawGraph[i].first));
     }
 }
 
 template<typename T>
-Graph<T>::Graph(std::vector<Node<T>> nodes){
-    this->nodes.resize(nodes.size());
-    for (const auto& node : nodes){
-        this->nodes[node.getID()] = node;
+Graph<T>::Graph(std::vector<Node<T>> nodes_vec){
+    nodes.reserve(nodes_vec.size());
+    ids.reserve(nodes.size());
+    for (const auto& node : nodes_vec){
+        nodes.push_back(node);
+        ids.push_back(static_cast<Identifiable>(node));
     }
 }
 
@@ -111,6 +115,16 @@ template<typename T>
 void Graph<T>::removeEdge(Identifiable node1, Identifiable node2){
     nodes.at(node1).removeNeighbour(node2);
     nodes.at(node2).removeNeighbour(node1);
+}
+
+template<typename T>
+int Graph<T>::getSize() const{
+    return nodes.size();
+}
+
+template<typename T>
+const std::vector<Identifiable>& Graph<T>::getIDs() const{
+    return ids;
 }
 
 template<typename T>
