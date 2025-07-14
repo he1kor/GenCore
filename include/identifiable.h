@@ -4,8 +4,9 @@
 
 class Identifiable{
     protected:
-        int id = -1;
+        int id = nullID;
     public:
+        static const int nullID = -1;
         Identifiable(int id);
         Identifiable() = default;
         virtual ~Identifiable() = default;
