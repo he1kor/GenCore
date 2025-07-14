@@ -4,101 +4,120 @@
 #include <functional>
 
 template<typename NodeT, typename EdgeT>
-class EdgeGraph : public Graph{
+class EdgeGraph : public Graph<NodeT>{
     static_assert(std::is_base_of_v<Identifiable, NodeT>, "NodeT must inherit from Identifiable");
     static_assert(std::is_base_of_v<Identifiable, EdgeT>, "EdgeT must inherit from Identifiable");
     public:
         EdgeGraph();
         EdgeGraph(
             const std::vector<std::pair<NodeT, std::vector<Identifiable>>>& rawGraph,
-            const std::set<std::pair<Identifiable, Identifiable>, EdgeT>& edges
+            const std::unordered_map<std::pair<Identifiable, Identifiable>, EdgeT, PairIDHash>& edges
         );
         EdgeGraph(
             const std::vector<Node<NodeT>>& nodes, 
-            const std::set<std::pair<Identifiable, Identifiable>, EdgeT>& edges);
+            const std::unordered_map<std::pair<Identifiable, Identifiable>, EdgeT, PairIDHash>& edges);
 
-        void initializeEdges(const std::set<std::pair<Identifiable, Identifiable>, EdgeT>& edges);
+        void initializeEdges(const std::unordered_map<std::pair<Identifiable, Identifiable>, EdgeT, PairIDHash>& edges);
         void separate(Identifiable id) override;
         void removeEdge(Identifiable node1, Identifiable node2) override;
         Identifiable getEdgeID(Identifiable node1, Identifiable node2) const;
+        const EdgeT& getEdge(Identifiable edgeID) const;
+        const EdgeT& getEdge(Identifiable node1, Identifiable node2) const;
     protected:
         EdgeGraph(const std::vector<std::pair<NodeT, std::vector<Identifiable>>>& rawGraph);
         EdgeGraph(const std::vector<Node<NodeT>>& nodes);
     private:
         std::unordered_map<std::pair<Identifiable, Identifiable>, Identifiable, PairIDHash> edgeIDs;
-        std::unordered_map<Identifiable, EdgeT> edges;
+        std::unordered_map<Identifiable, EdgeT, IDHash> edges;
         void initializeEdgeIDs();
 };
 
 
 
-template<typename NodeT, typename edgeT>
-EdgeGraph<NodeT, edgeT>::EdgeGraph(){}
+template<typename NodeT, typename EdgeT>
+EdgeGraph<NodeT, EdgeT>::EdgeGraph(){}
 
-template<typename NodeT, typename edgeT>
-void EdgeGraph<NodeT, edgeT>::initializeEdgeIDs(){
+template<typename NodeT, typename EdgeT>
+void EdgeGraph<NodeT, EdgeT>::initializeEdgeIDs(){
+    if (edgeIDs.size() != 0){
+        throw std::exception("Edges already initialized.");
+    }
     int max_edge_id = 0;
-    for (Node node1 : nodes){
-        for (Node node2 : node1.getNeighbours()){
+    for (const Node<NodeT>& node1 : this->nodes){
+        for (const Node<NodeT>& node2 : node1.getNeighbours()){
             if (edgeIDs.count(std::make_pair(node2.getID(), node1.getID()))){
                 edgeIDs[std::make_pair(node1.getID(), node2.getID())] = edgeIDs.at(std::make_pair(node2.getID(), node1.getID()));
                 continue;
             }
             edgeIDs[std::make_pair(node1.getID(), node2.getID())] = max_edge_id;
 
-            edges[max_edge_id] = edgeT();
+            edges[max_edge_id] = EdgeT();
             max_edge_id++;
         }
     }
-    for ()
 }
 
-template<typename NodeT, typename edgeT>
-EdgeGraph<NodeT, edgeT>::EdgeGraph(
-    const std::vector<std::pair<NodeT, std::vector<Identifiable>>>& rawGraph) : Graph(idGraph){}
+template<typename NodeT, typename EdgeT>
+EdgeGraph<NodeT, EdgeT>::EdgeGraph(
+    const std::vector<std::pair<NodeT, std::vector<Identifiable>>>& rawGraph) : Graph<NodeT>(rawGraph){
+        initializeEdgeIDs();
+    }
 
 template <typename NodeT, typename EdgeT>
 EdgeGraph<NodeT, EdgeT>::EdgeGraph(
     const std::vector<std::pair<NodeT, std::vector<Identifiable>>> &rawGraph,
-    const std::set<std::pair<Identifiable, Identifiable>, EdgeT>& edges){
-    EdgeGraph<NodeT, EdgeT>(rawGraph);
+    const std::unordered_map<std::pair<Identifiable, Identifiable>, EdgeT, PairIDHash>& edges) : EdgeGraph<NodeT, EdgeT>(rawGraph){
     initializeEdges(edges);
 }
-    
+
 template <typename NodeT, typename EdgeT>
 EdgeGraph<NodeT, EdgeT>::EdgeGraph(
     const std::vector<Node<NodeT>>& nodes,
-    const std::set<std::pair<Identifiable, Identifiable>, EdgeT>& edges){
-    EdgeGraph<NodeT, EdgeT>(nodes);
-}
+    const std::unordered_map<std::pair<Identifiable, Identifiable>, EdgeT, PairIDHash>& edges) : EdgeGraph<NodeT, EdgeT>(nodes){
+        initializeEdges(edges);
+    }
 
 template <typename NodeT, typename EdgeT>
 void EdgeGraph<NodeT, EdgeT>::initializeEdges(
-    const std::set<std::pair<Identifiable, Identifiable>, EdgeT> &edges){
-    this->edges(edges.begin(), edges.end());
+    const std::unordered_map<std::pair<Identifiable, Identifiable>, EdgeT, PairIDHash> &edges){
+    for (const auto& [nodePair, edge] : edges){
+        edgeIDs[nodePair] = edge;
+        edges[static_cast<Identifiable>(edge)] = edge;
+    }
 }
 
-template<typename NodeT, typename edgeT>
-EdgeGraph<NodeT, edgeT>::EdgeGraph(const std::vector<Node<NodeT>>& nodes) : Graph(nodes){}
+template<typename NodeT, typename EdgeT>
+EdgeGraph<NodeT, EdgeT>::EdgeGraph(const std::vector<Node<NodeT>>& nodes) : Graph<NodeT>(nodes){
+    initializeEdgeIDs();
+}
 
-template<typename NodeT, typename edgeT>
-void EdgeGraph<NodeT, edgeT>::removeEdge(Identifiable node1, Identifiable node2){
-    Graph::removeEdge(node1, node2);
+template<typename NodeT, typename EdgeT>
+void EdgeGraph<NodeT, EdgeT>::removeEdge(Identifiable node1, Identifiable node2){
+    this->removeEdge(node1, node2);
     edgeIDs.erase({node1, node2});
     edgeIDs.erase({node2, node1});
 }
 
-template<typename NodeT, typename edgeT>
-Identifiable EdgeGraph<NodeT, edgeT>::getEdgeID(Identifiable node1, Identifiable node2) const{
+template<typename NodeT, typename EdgeT>
+Identifiable EdgeGraph<NodeT, EdgeT>::getEdgeID(Identifiable node1, Identifiable node2) const{
     return edgeIDs.at({node1, node2});
 }
 
-template <typename NodeT, typename edgeT>
-void EdgeGraph<NodeT, edgeT>::separate(Identifiable id)
-{
-    for (int neighbourID : getNeighbours(id)){
+template <typename NodeT, typename EdgeT>
+const EdgeT &EdgeGraph<NodeT, EdgeT>::getEdge(Identifiable edgeID) const{
+    return edges[edgeID];
+}
+
+template <typename NodeT, typename EdgeT>
+const EdgeT &EdgeGraph<NodeT, EdgeT>::getEdge(Identifiable node1, Identifiable node2) const{
+    return getEdge(getEdgeID(node1, node2));
+}
+
+template <typename NodeT, typename EdgeT>
+void EdgeGraph<NodeT, EdgeT>::separate(Identifiable id){
+    for (Identifiable neighbourID : this->getNeighbours(id)){
         edgeIDs.erase({neighbourID, id});
         edgeIDs.erase({id, neighbourID});
     }
-    Graph::separate(id);
+    this->separate(id);
 }
