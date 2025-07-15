@@ -7,22 +7,25 @@
 #include "grid.h"
 #include "2d.h"
 
-
-IntPoint2 rasterizePoint2(const DoublePoint2& doublePoint2, double width, double height){
-    return {
-        doubleToIndex(doublePoint2.x, width),
-        doubleToIndex(doublePoint2.y, height)
-    };
+int rasterizeSize(double size){
+    return std::ceil(size);
 }
 
 int doubleToIndex(double value, double size) {
     if (size < 0.0)
         throw std::invalid_argument("size must be non-negative");
     if (value >= size)
-        return std::ceil(size) - 1;;
+        return rasterizeSize(size) - 1;;
     if (value < 0.0)
         return 0;
     return static_cast<int>(std::floor(value));
+}
+
+IntPoint2 rasterizePoint2(const DoublePoint2& doublePoint2, double width, double height){
+    return {
+        doubleToIndex(doublePoint2.x, width),
+        doubleToIndex(doublePoint2.y, height)
+    };
 }
 
 template<typename T>
