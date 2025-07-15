@@ -1,10 +1,19 @@
 #pragma once
 
+#include <stdexcept>
+#include <cmath>
+
 #include "plane.h"
 #include "grid.h"
-#include <stdexcept>
+#include "2d.h"
 
-#include <cmath>
+
+IntPoint2 rasterizePoint2(const DoublePoint2& doublePoint2, double width, double height){
+    return {
+        doubleToIndex(doublePoint2.x, width),
+        doubleToIndex(doublePoint2.y, height)
+    };
+}
 
 int doubleToIndex(double value, double size) {
     if (size < 0.0)
