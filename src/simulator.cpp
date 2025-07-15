@@ -23,19 +23,19 @@ void Simulator::step(){
 void Simulator::finish(){
     if (status != SimulationStatus::RUNNING)
         throw std::logic_error("Can't finish, the status is not RUNNING!");
-    status = SimulationStatus::STOPPED;
+    status = SimulationStatus::FINISHED;
     onFinish();
 }
 
 void Simulator::reset(){
-    if (status != SimulationStatus::STOPPED)
-        throw std::logic_error("Can't reset, the status is not STOPPED!");
+    if (status != SimulationStatus::FINISHED)
+        throw std::logic_error("Can't reset, the status is not FINISHED!");
     status = SimulationStatus::INIT;
     steps = -1;
     onReset();
 }
 
-int Simulator::getStep() const{
+long long Simulator::getStep() const{
     return steps;
 }
 
