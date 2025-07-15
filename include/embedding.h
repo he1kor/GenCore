@@ -62,26 +62,26 @@ template<typename T> void EmbeddablePlane<T>::initEmbed(const Graph<T> *graph){
     //addSpot(Spot(60, 58, 3));
     //addSpot(Spot(56, 50, 4));
     // Outer pentagon (nodes 0-4)
-    this->insertSpot(Spot<T>(64, 16, std::make_shared<T>(0)));    // Top-center
-    this->insertSpot(Spot<T>(96, 32, std::make_shared<T>(1)));    // Upper-right
-    this->insertSpot(Spot<T>(112, 80, std::make_shared<T>(2)));   // Far-right
-    this->insertSpot(Spot<T>(80, 112, std::make_shared<T>(3)));   // Lower-right
-    this->insertSpot(Spot<T>(32, 112, std::make_shared<T>(4)));   // Lower-left
+    this->insertSpot(Spot<T>(64, 16, T(0)));    // Top-center
+    this->insertSpot(Spot<T>(96, 32, T(1)));    // Upper-right
+    this->insertSpot(Spot<T>(112, 80, T(2)));   // Far-right
+    this->insertSpot(Spot<T>(80, 112, T(3)));   // Lower-right
+    this->insertSpot(Spot<T>(32, 112, T(4)));   // Lower-left
 
     // Inner layer (nodes 5-9)
-    this->insertSpot(Spot<T>(96, 64, std::make_shared<T>(5)));    // Right-middle
-    this->insertSpot(Spot<T>(80, 48, std::make_shared<T>(6)));    // Right-upper-center
-    this->insertSpot(Spot<T>(80, 80, std::make_shared<T>(7)));    // Right-lower-center
-    this->insertSpot(Spot<T>(48, 80, std::make_shared<T>(8)));    // Left-lower-center
-    this->insertSpot(Spot<T>(32, 64, std::make_shared<T>(9)));    // Left-middle
+    this->insertSpot(Spot<T>(96, 64, T(5)));    // Right-middle
+    this->insertSpot(Spot<T>(80, 48, T(6)));    // Right-upper-center
+    this->insertSpot(Spot<T>(80, 80, T(7)));    // Right-lower-center
+    this->insertSpot(Spot<T>(48, 80, T(8)));    // Left-lower-center
+    this->insertSpot(Spot<T>(32, 64, T(9)));    // Left-middle
 
     // Central hub (node 10) and extensions (nodes 11-15)
-    this->insertSpot(Spot<T>(64, 64, std::make_shared<T>(10)));   // Exact center
-    this->insertSpot(Spot<T>(48, 48, std::make_shared<T>(11)));   // Upper-left-center
-    this->insertSpot(Spot<T>(64, 32, std::make_shared<T>(12)));   // Top-inner
-    this->insertSpot(Spot<T>(48, 32, std::make_shared<T>(13)));   // Upper-left
-    this->insertSpot(Spot<T>(32, 48, std::make_shared<T>(14)));   // Left-upper-center
-    this->insertSpot(Spot<T>(32, 16, std::make_shared<T>(15)));   // Far-left-top
+    this->insertSpot(Spot<T>(64, 64, T(10)));   // Exact center
+    this->insertSpot(Spot<T>(48, 48, T(11)));   // Upper-left-center
+    this->insertSpot(Spot<T>(64, 32, T(12)));   // Top-inner
+    this->insertSpot(Spot<T>(48, 32, T(13)));   // Upper-left
+    this->insertSpot(Spot<T>(32, 48, T(14)));   // Left-upper-center
+    this->insertSpot(Spot<T>(32, 16, T(15)));   // Far-left-top
 
     // 1. Random initial placement with minimum distance
     //for (int i = 0; i < graph->size(); ++i) {

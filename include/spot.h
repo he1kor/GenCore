@@ -14,7 +14,7 @@ class Spot {
     public:
         Spot();
         Spot(double x, double y);
-        Spot(double x, double y, std::shared_ptr<T> t_ptr);
+        Spot(double x, double y, T t);
         void setX(double x);
         void setY(double y);
         void changeX(double dx);
@@ -22,23 +22,23 @@ class Spot {
         Point2 getCoords();
         double getX() const;
         double getY() const;
-        std::shared_ptr<T> getValue() const;
+        const T& getValue() const;
         Identifiable getIdentifiable() const;
         
     private:
         double x;
         double y;
-        std::shared_ptr<T> t_ptr;
+        T t;
 };
 
 template <typename T>
-Spot<T>::Spot() : x(-1), y(-1), t_ptr(nullptr) {}
+Spot<T>::Spot() : x(-1), y(-1), t(T()) {}
 
 template <typename T>
-Spot<T>::Spot(double x, double y) : x(x), y(y), t_ptr(nullptr) {}
+Spot<T>::Spot(double x, double y) : x(x), y(y), t(T()) {}
 
 template <typename T>
-Spot<T>::Spot(double x, double y, std::shared_ptr<T> t_ptr) : x(x), y(y), t_ptr(t_ptr) {}
+Spot<T>::Spot(double x, double y, T t) : x(x), y(y), t(t) {}
 
 template <typename T>
 void Spot<T>::setX(double x) {
@@ -71,13 +71,13 @@ double Spot<T>::getY() const {
 }
 
 template <typename T>
-std::shared_ptr<T> Spot<T>::getValue() const {
-    return t_ptr;
+const T& Spot<T>::getValue() const {
+    return t;
 }
 
 template <typename T>
 Identifiable Spot<T>::getIdentifiable() const {
-    return *t_ptr;
+    return static_cast<Identifiable>(t);
 }
 
 template <typename T>
