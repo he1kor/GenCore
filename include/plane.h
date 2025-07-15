@@ -76,7 +76,17 @@ public:
     int getSpotsNumber() const {
         return spots.size();
     }
+    double getRelativeX(Identifiable id) const{
+        return getSpot(id).getX() - getLeftX();
+    }
     
+    double getRelativeY(Identifiable id) const{
+        return getSpot(id).getY() - getUpperY();
+    }
+    DoublePoint2 getRelativePosition(Identifiable id) const{
+        return DoublePoint2(getRelativeX(id), getRelativeY(id));
+    }
+
     const Spot<T>& getSpot(Identifiable id) const {
         return spots.at(id);
     }
