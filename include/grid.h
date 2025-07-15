@@ -3,6 +3,7 @@
 #include <vector>
 #include <unordered_map>
 
+#include "2d.h"
 #include "identifiable.h"
 
 template<typename T>
@@ -16,6 +17,7 @@ class Grid{
         Grid(int width, int height, R&& range);
 
         void setTile(int x, int y, Identifiable value);
+        void setTile(IntPoint2 point, Identifiable value);
         Identifiable getTile(int x, int y);
         int getWidth();
         int getHeight();
@@ -34,6 +36,11 @@ Grid<T>::Grid(int width, int height) : width(width), height(height){
 template <typename T>
 void Grid<T>::setTile(int x, int y, Identifiable value){
     matrix.at(y).at(x) = value;
+}
+
+template <typename T>
+void Grid<T>::setTile(IntPoint2 point, Identifiable value){
+    matrix.at(point.y).at(point.x) = value;
 }
 
 template <typename T>
