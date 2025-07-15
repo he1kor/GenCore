@@ -22,19 +22,22 @@ class Simulator{
         virtual void finish() final;
         virtual void reset() final;
 
-        virtual void onStart(){};
-        virtual void onStep() = 0;
-        virtual void onFinish(){};
-        virtual void onReset(){};
-
-
         bool isInitialized() const{return status == SimulationStatus::INIT;};
         bool isRunning() const{return status == SimulationStatus::RUNNING;};
         bool isFinished() const{return status == SimulationStatus::FINISHED;};
 
         long long getStep() const;
         SimulationStatus getStatus() const;
+
+        static constexpr long long STARTING_STEP = 0;
+        static constexpr long long NOT_STARTED_STEP = -1;
+
+    protected:
+        virtual void onStart(){};
+        virtual void onStep() = 0;
+        virtual void onFinish(){};
+        virtual void onReset(){};
     private:
-        long long steps = -1;
+        long long steps = NOT_STARTED_STEP;
         SimulationStatus status = SimulationStatus::INIT;
 };

@@ -9,7 +9,7 @@ void Simulator::start(){
         throw std::logic_error("Can't start, the status is not INIT!");
     }
     status = SimulationStatus::RUNNING;
-    steps = 0;
+    steps = STARTING_STEP;
     onStart();
 }
 
@@ -31,7 +31,7 @@ void Simulator::reset(){
     if (status != SimulationStatus::FINISHED)
         throw std::logic_error("Can't reset, the status is not FINISHED!");
     status = SimulationStatus::INIT;
-    steps = -1;
+    steps = NOT_STARTED_STEP;
     onReset();
 }
 
