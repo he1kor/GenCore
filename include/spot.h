@@ -2,11 +2,7 @@
 #include <utility>
 #include <memory>
 #include "identifiable.h"
-
-struct Point2 {
-    double x = 0;
-    double y = 0;
-};
+#include "2d.h"
 
 template<typename T>
 class Spot {
@@ -19,7 +15,7 @@ class Spot {
         void setY(double y);
         void changeX(double dx);
         void changeY(double dy);
-        Point2 getCoords();
+        DoublePoint2 getCoords();
         double getX() const;
         double getY() const;
         const T& getValue() const;
@@ -81,6 +77,6 @@ Identifiable Spot<T>::getIdentifiable() const {
 }
 
 template <typename T>
-Point2 Spot<T>::getCoords() {
+DoublePoint2 Spot<T>::getCoords() {
     return {x, y};
 }

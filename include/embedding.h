@@ -27,7 +27,7 @@ class EmbeddablePlane : public Plane<T>{
         void setupTempSpots();
 
     private:
-        Point2 getClosestPointOnEdge(const Point2 point, const Point2 end1, const Point2 end2);
+        DoublePoint2 getClosestPointOnEdge(const DoublePoint2 point, const DoublePoint2 end1, const DoublePoint2 end2);
         void applyRepulse(double temperature);
         void applyBorderRepulseToSpot(Identifiable id, double temperature);
         void clampToBorder(Identifiable id);
@@ -181,10 +181,10 @@ void EmbeddablePlane<T>::setupTempSpots(){
     }
 }
 
-template<typename T> Point2 EmbeddablePlane<T>::getClosestPointOnEdge(const Point2 point, const Point2 end1, const Point2 end2){
-    Point2 segment = {end2.x - end1.x, end2.y - end1.y};
+template<typename T> DoublePoint2 EmbeddablePlane<T>::getClosestPointOnEdge(const DoublePoint2 point, const DoublePoint2 end1, const DoublePoint2 end2){
+    DoublePoint2 segment = {end2.x - end1.x, end2.y - end1.y};
     
-    Point2 p1_to_p = {point.x - end1.x, point.y - end1.y};
+    DoublePoint2 p1_to_p = {point.x - end1.x, point.y - end1.y};
     
     double segmentLengthSquared = segment.x * segment.x + segment.y * segment.y;
     
@@ -196,7 +196,7 @@ template<typename T> Point2 EmbeddablePlane<T>::getClosestPointOnEdge(const Poin
     
     t = std::max(0.0, std::min(1.0, t));
     
-    Point2 closest = {
+    DoublePoint2 closest = {
         end1.x + t * segment.x,
         end1.y + t * segment.y
     };
@@ -265,7 +265,7 @@ void EmbeddablePlane<T>::applyEdgeRepulse(double temperature){
             for (Identifiable end2_id : currentGraph->getNode(end1_id).getNeighbours()){
                 if (end2_id == spot_id || end2_id >= end1_id)
                     continue;
-                Point2 edgeSpot = getClosestPointOnEdge(temp_spots[spot_id].getCoords(), temp_spots[end1_id].getCoords(), temp_spots[end2_id].getCoords());
+                DoublePoint2 edgeSpot = getClosestPointOnEdge(temp_spots[spot_id].getCoords(), temp_spots[end1_id].getCoords(), temp_spots[end2_id].getCoords());
                 double dx = edgeSpot.x - this->getSpot(spot_id).getX();
                 double dy = edgeSpot.y - this->getSpot(spot_id).getY();
                 double distanceSquared = std::max(minDistanceRepulsion, dx*dx + dy*dy);
