@@ -5,7 +5,7 @@ file(GLOB_RECURSE SOURCES
 cmake_minimum_required(VERSION 3.8)
 project(GenCore)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 23)
 
 add_library(GenCore ${SOURCES})
 
