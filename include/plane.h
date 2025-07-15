@@ -80,6 +80,9 @@ public:
     const Spot<T>& getSpot(Identifiable id) const {
         return spots.at(id);
     }
+    const T& getValue(Identifiable id) const{
+        return getSpot(id).getValue();
+    }
     
     const std::vector<Identifiable>& getIDs() const {
         return ids;
