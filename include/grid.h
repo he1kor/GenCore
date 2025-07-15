@@ -18,11 +18,11 @@ class Grid{
 
         void setTile(int x, int y, Identifiable value);
         void setTile(IntPoint2 point, Identifiable value);
-        Identifiable getTileID(int x, int y);
-        std::vector<Identifiable> getTileIDs();
-        T getTile(int x, int y);
-        int getWidth();
-        int getHeight();
+        Identifiable getTileID(int x, int y) const;
+        const std::vector<Identifiable>& getTileIDs() const;
+        T getTile(int x, int y) const;
+        int getWidth() const;
+        int getHeight() const;
     private:
         int width;
         int height;
@@ -47,27 +47,27 @@ void Grid<T>::setTile(IntPoint2 point, Identifiable value){
 }
 
 template <typename T>
-Identifiable Grid<T>::getTileID(int x, int y){
+Identifiable Grid<T>::getTileID(int x, int y) const{
     return matrix.at(y).at(x);
 }
 
 template <typename T>
-std::vector<Identifiable> Grid<T>::getTileIDs(){
+const std::vector<Identifiable>& Grid<T>::getTileIDs() const{
     return tileIDs;
 }
 
 template <typename T>
-T Grid<T>::getTile(int x, int y){
+T Grid<T>::getTile(int x, int y) const{
     return tileset.at(matrix.at(y).at(x));
 }
 
 template <typename T>
-int Grid<T>::getWidth(){
+int Grid<T>::getWidth() const{
     return width;
 }
 
 template <typename T>
-int Grid<T>::getHeight(){
+int Grid<T>::getHeight() const{
     return height;
 }
 
