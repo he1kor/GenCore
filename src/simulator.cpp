@@ -2,8 +2,6 @@
 
 #include <stdexcept>
 
-Simulator::Simulator(){};
-
 void Simulator::start(){
     if (status != SimulationStatus::INIT){
         throw std::logic_error("Can't start, the status is not INIT!");

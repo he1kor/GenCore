@@ -8,7 +8,7 @@ enum class SimulationStatus{
 
 class Simulator{
     public:
-        Simulator();
+        Simulator(){};
         virtual ~Simulator() = default;
 
         Simulator(const Simulator&) = default;
