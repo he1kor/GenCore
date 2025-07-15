@@ -18,7 +18,9 @@ class Grid{
 
         void setTile(int x, int y, Identifiable value);
         void setTile(IntPoint2 point, Identifiable value);
-        Identifiable getTile(int x, int y);
+        Identifiable getTileID(int x, int y);
+        std::vector<Identifiable> getTileIDs();
+        T getTile(int x, int y);
         int getWidth();
         int getHeight();
     private:
@@ -26,6 +28,7 @@ class Grid{
         int height;
         std::vector<std::vector<Identifiable>> matrix;
         std::unordered_map<Identifiable, T, IDHash> tileset;
+        std::vector<Identifiable> tileIDs;
 };
 
 template <typename T> 
@@ -44,8 +47,18 @@ void Grid<T>::setTile(IntPoint2 point, Identifiable value){
 }
 
 template <typename T>
-Identifiable Grid<T>::getTile(int x, int y){
+Identifiable Grid<T>::getTileID(int x, int y){
     return matrix.at(y).at(x);
+}
+
+template <typename T>
+std::vector<Identifiable> Grid<T>::getTileIDs(){
+    return tileIDs;
+}
+
+template <typename T>
+T Grid<T>::getTile(int x, int y){
+    return tileset.at(matrix.at(y).at(x));
 }
 
 template <typename T>
@@ -62,7 +75,9 @@ template <typename T>
 template <std::ranges::input_range R>
 requires std::convertible_to<std::ranges::range_value_t<R>, T>
 Grid<T>::Grid(int width, int height, R&& range) : Grid(width, height){
+    tileset.reserve(range.size());
     for (const T& t : range) {
         tileset[static_cast<Identifiable>(t)] = t;
+        tileIDs.push_back(static_cast<Identifiable>(t));
     }
 }
