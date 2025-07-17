@@ -30,6 +30,10 @@ unsigned int RandomGenerator::getSeed() const{
     return seed;
 }
 
+void RandomGenerator::reset(){
+    setSeed(getSeed());
+}
+
 unsigned int RandomGenerator::generateSeed(){
     std::random_device rd;
     unsigned int seed = rd();

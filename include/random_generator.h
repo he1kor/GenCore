@@ -9,6 +9,7 @@ class RandomGenerator{
         static RandomGenerator& instance();
         bool chanceOccurred(double probability);
         void setSeed(unsigned int seed);
+        void reset();
         unsigned int getSeed() const;
         unsigned int generateSeed();
     private:
