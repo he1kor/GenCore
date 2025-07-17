@@ -1,3 +1,5 @@
+#pragma once
+
 #include "graph.h"
 #include <unordered_map>
 
@@ -23,9 +25,9 @@ class EdgeGraph : public Graph<NodeT>{
         Identifiable getEdgeID(Identifiable node1, Identifiable node2) const;
         const EdgeT& getEdge(Identifiable edgeID) const;
         const EdgeT& getEdge(Identifiable node1, Identifiable node2) const;
-    protected:
         EdgeGraph(const std::vector<std::pair<NodeT, std::vector<Identifiable>>>& rawGraph);
         EdgeGraph(const std::vector<Node<NodeT>>& nodes);
+    protected:
     private:
         std::unordered_map<std::pair<Identifiable, Identifiable>, Identifiable, PairIDHash> edgeIDs;
         std::unordered_map<Identifiable, EdgeT, IDHash> edges;
@@ -40,10 +42,11 @@ EdgeGraph<NodeT, EdgeT>::EdgeGraph(){}
 template<typename NodeT, typename EdgeT>
 void EdgeGraph<NodeT, EdgeT>::initializeEdgeIDs(){
     if (edgeIDs.size() != 0){
-        throw std::exception("Edges already initialized.");
+        throw std::logic_error("Edges already initialized.");
     }
     int max_edge_id = 0;
-    for (const Node<NodeT>& node1 : this->nodes){
+    for (Identifiable id : this->getIDs()){
+        auto node1 = this->getNode(id);
         for (const Node<NodeT>& node2 : node1.getNeighbours()){
             if (edgeIDs.count(std::make_pair(node2.getID(), node1.getID()))){
                 edgeIDs[std::make_pair(node1.getID(), node2.getID())] = edgeIDs.at(std::make_pair(node2.getID(), node1.getID()));
