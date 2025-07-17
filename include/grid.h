@@ -34,8 +34,8 @@ class Grid{
         std::optional<T>tryGetTile(IntPoint2 point2);
 
     private:
-        int width;
-        int height;
+        int width = -1;
+        int height = -1;
         std::vector<std::vector<Identifiable>> matrix;
         std::unordered_map<Identifiable, T, IDHash> tileset;
         std::vector<Identifiable> tileIDs;
