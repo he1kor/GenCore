@@ -1,5 +1,6 @@
 #include "test.h"
 #include "rasterization.h"
+#include "zone_bloater.h"
 
 #include <iostream>
 
