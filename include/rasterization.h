@@ -36,7 +36,7 @@ Grid<T> safeRasterizePlane(const Plane<T>& plane){
         tileset.push_back(plane.getValue(id));
     }
     Grid<T> result(rasterizeSize(plane.getWidth()), rasterizeSize(plane.getHeight()), tileset);
-    for (Identifiable id : result.getIDs()){
+    for (Identifiable id : result.getTileIDs()){
         result.setTile(rasterizePoint2(plane.getRelativePosition(id), result.getWidth(), result.getHeight()), id);
     }
     return result;
