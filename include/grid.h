@@ -43,7 +43,7 @@ class Grid{
 
 template <typename T> 
 Grid<T>::Grid(int width, int height) : width(width), height(height){
-    matrix = std::vector<std::vector<Identifiable>>(height, std::vector(width));
+    matrix = std::vector<std::vector<Identifiable>>(height, std::vector<Identifiable>(width));
 }
 
 template <typename T>
