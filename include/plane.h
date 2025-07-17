@@ -44,19 +44,19 @@ public:
         this->leftX = leftX;
     }
     
-    double getUpperY() {
+    double getUpperY() const{
         return upperY;
     }
     
-    double getBottomY() {
+    double getBottomY() const{
         return upperY + height;
     }
     
-    double getLeftX() {
+    double getLeftX() const{
         return leftX;
     }
     
-    double getRightX() {
+    double getRightX() const{
         return leftX + width;
     }
     
