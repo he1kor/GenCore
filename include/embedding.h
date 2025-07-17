@@ -17,11 +17,11 @@ template<typename T>
 class EmbeddablePlane : public Plane<T>{
     public:
         using Plane<T>::Plane;
-        void initEmbed(const Graph<T> *graph);
+        void initEmbed(std::shared_ptr<const Graph<T>> graph);
         bool stepForceDirected();
         bool stepForceDirectedStable();
         void embedNode(Node<T> node, double x, double y);
-        void embed(const Graph<T> *graph);
+        void embed(std::shared_ptr<const Graph<T>> graph);
         bool isEmbedding();
         void updateTempSpots();
         void setupTempSpots();
@@ -35,22 +35,22 @@ class EmbeddablePlane : public Plane<T>{
         void applyEdgeRepulse(double temperature);
         void applyAttraction(double temperature);
         int currentIteration = -1;
-        const int iterationsMax = 500;
-        const int repulsionEdgeIterationsMax = 500;
-        const int repulsionIterationsMax = 600;
+        const int iterationsMax = 100;
+        const int repulsionEdgeIterationsMax = 100;
+        const int repulsionIterationsMax = 140;
         const double minDistanceRepulsion = 2.0;
         const double kEdgeRepulsion = 5.0f;
         const double kRepulsion = 15.0;
         const double kAttraction = 0.150;
         const double idealLength = 5.0;
         const double minimumTemperature = 0.01;
-        const Graph<T>* currentGraph;
+        std::shared_ptr<const Graph<T>> currentGraph;
         std::unordered_map<Identifiable, Spot<T>, IDHash> temp_spots;
 };
 
 #include <random>
 
-template<typename T> void EmbeddablePlane<T>::initEmbed(const Graph<T> *graph){
+template<typename T> void EmbeddablePlane<T>::initEmbed(std::shared_ptr<const Graph<T>> graph){
     std::random_device rd;
     std::mt19937 rng(rd());
     std::uniform_real_distribution<double> distWidth(0, EmbeddablePlane<T>::getWidth());
@@ -62,52 +62,55 @@ template<typename T> void EmbeddablePlane<T>::initEmbed(const Graph<T> *graph){
     //addSpot(Spot(60, 58, 3));
     //addSpot(Spot(56, 50, 4));
     // Outer pentagon (nodes 0-4)
-    this->insertSpot(Spot<T>(64, 16, T(0)));    // Top-center
-    this->insertSpot(Spot<T>(96, 32, T(1)));    // Upper-right
-    this->insertSpot(Spot<T>(112, 80, T(2)));   // Far-right
-    this->insertSpot(Spot<T>(80, 112, T(3)));   // Lower-right
-    this->insertSpot(Spot<T>(32, 112, T(4)));   // Lower-left
+    // this->insertSpot(Spot<T>(64, 16, T(0)));    // Top-center
+    // this->insertSpot(Spot<T>(96, 32, T(1)));    // Upper-right
+    // this->insertSpot(Spot<T>(112, 80, T(2)));   // Far-right
+    // this->insertSpot(Spot<T>(80, 112, T(3)));   // Lower-right
+    // this->insertSpot(Spot<T>(32, 112, T(4)));   // Lower-left
 
-    // Inner layer (nodes 5-9)
-    this->insertSpot(Spot<T>(96, 64, T(5)));    // Right-middle
-    this->insertSpot(Spot<T>(80, 48, T(6)));    // Right-upper-center
-    this->insertSpot(Spot<T>(80, 80, T(7)));    // Right-lower-center
-    this->insertSpot(Spot<T>(48, 80, T(8)));    // Left-lower-center
-    this->insertSpot(Spot<T>(32, 64, T(9)));    // Left-middle
+    // // Inner layer (nodes 5-9)
+    // this->insertSpot(Spot<T>(96, 64, T(5)));    // Right-middle
+    // this->insertSpot(Spot<T>(80, 48, T(6)));    // Right-upper-center
+    // this->insertSpot(Spot<T>(80, 80, T(7)));    // Right-lower-center
+    // this->insertSpot(Spot<T>(48, 80, T(8)));    // Left-lower-center
+    // this->insertSpot(Spot<T>(32, 64, T(9)));    // Left-middle
 
-    // Central hub (node 10) and extensions (nodes 11-15)
-    this->insertSpot(Spot<T>(64, 64, T(10)));   // Exact center
-    this->insertSpot(Spot<T>(48, 48, T(11)));   // Upper-left-center
-    this->insertSpot(Spot<T>(64, 32, T(12)));   // Top-inner
-    this->insertSpot(Spot<T>(48, 32, T(13)));   // Upper-left
-    this->insertSpot(Spot<T>(32, 48, T(14)));   // Left-upper-center
-    this->insertSpot(Spot<T>(32, 16, T(15)));   // Far-left-top
+    // // Central hub (node 10) and extensions (nodes 11-15)
+    // this->insertSpot(Spot<T>(64, 64, T(10)));   // Exact center
+    // this->insertSpot(Spot<T>(48, 48, T(11)));   // Upper-left-center
+    // this->insertSpot(Spot<T>(64, 32, T(12)));   // Top-inner
+    // this->insertSpot(Spot<T>(48, 32, T(13)));   // Upper-left
+    // this->insertSpot(Spot<T>(32, 48, T(14)));   // Left-upper-center
+    // this->insertSpot(Spot<T>(32, 16, T(15)));   // Far-left-top
 
-    // 1. Random initial placement with minimum distance
-    //for (int i = 0; i < graph->size(); ++i) {
-    //    bool valid = false;
-    //    while (!valid) {
-    //        addSpot(Spot(distWidth(rng), distHeight(rng), i));
-    //        valid = true;
-    //        // Ensure no two points are too close initially
-    //        for (int j = 0; j < i; ++j) {
-    //            double dx = getSpots()[j].getX() - getSpots()[i].getX();
-    //            double dy = getSpots()[j].getY() - getSpots()[i].getY();
-    //            double dist = std::sqrt(dx*dx + dy*dy);
-    //            if (dist < idealLength / 2) {
-    //                valid = false;
-    //                break;
-    //            }
-    //        }
-    //    }
-    //}
+    for (int i = 0; i < graph->size(); ++i) {
+        bool valid = false;
+        while (!valid) {
+            Identifiable id1 = graph->getIDs()[i];
+            auto spot = Spot<Identifiable>(distWidth(rng), distHeight(rng), id1);
+            this->insertSpot(spot);
+            valid = true;
+            // Ensure no two points are too close initially
+            for (int j = 0; j < i; ++j) {
+                Identifiable id2 = graph->getIDs()[j];
+                double dx = this->getSpot(id1).getX() - this->getSpot(id2).getX();
+                double dy = this->getSpot(id1).getY() - this->getSpot(id2).getY();
+                double dist = std::sqrt(dx*dx + dy*dy);
+                if (dist < idealLength / 2) {
+                    valid = false;
+                    break;
+                }
+            }
+        }
+    }
     this->currentGraph = graph;
     currentIteration = 0;
 }
 
 template<typename T> bool EmbeddablePlane<T>::stepForceDirected(){
-    if (currentIteration == -1)
+    if (currentIteration == -1){
         return false;
+    }
 
     updateTempSpots();
 
@@ -154,10 +157,10 @@ template<typename T> bool EmbeddablePlane<T>::stepForceDirectedStable(){
 }
 
 template<typename T> void EmbeddablePlane<T>::embedNode(Node<T> node, double x, double y){
-    addSpot(Spot(x, y, node.getID()));
+    insertSpot(Spot<T>(x, y, node.getID()));
 }
 
-template<typename T> void EmbeddablePlane<T>::embed(const Graph<T> *graph){
+template<typename T> void EmbeddablePlane<T>::embed(std::shared_ptr<const Graph<T>> graph){
     
 }
 
