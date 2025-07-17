@@ -24,6 +24,9 @@ class Grid{
         T getTile(int x, int y) const;
         int getWidth() const;
         int getHeight() const;
+        
+        bool isEmpty(int x, int y);
+        bool isEmpty(IntPoint2 point);
 
         bool isValidPoint(IntPoint2 point2);
 
@@ -76,6 +79,16 @@ int Grid<T>::getWidth() const{
 template <typename T>
 int Grid<T>::getHeight() const{
     return height;
+}
+
+template <typename T>
+bool Grid<T>::isEmpty(int x, int y){
+    return grid.at(y).at(x) == Identifiable::nullID;
+}
+
+template <typename T>
+bool Grid<T>::isEmpty(IntPoint2 point){
+    return isEmpty(point.x, point.y);
 }
 
 template <typename T>
