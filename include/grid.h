@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <unordered_map>
+#include <optional>
 
 #include "2d.h"
 #include "identifiable.h"
@@ -23,6 +24,12 @@ class Grid{
         T getTile(int x, int y) const;
         int getWidth() const;
         int getHeight() const;
+
+        bool isValidPoint(IntPoint2 point2);
+
+        std::optional<Identifiable>tryGetID(IntPoint2 point2);
+        std::optional<T>tryGetTile(IntPoint2 point2);
+
     private:
         int width;
         int height;
@@ -69,6 +76,29 @@ int Grid<T>::getWidth() const{
 template <typename T>
 int Grid<T>::getHeight() const{
     return height;
+}
+
+template <typename T>
+bool Grid<T>::isValidPoint(IntPoint2 point){
+    if (point.x < 0 || point.y < 0)
+        return false;
+    if (point.x >= getWidth() || point.y >= getHeight())
+        return false;
+    return true;
+}
+
+template <typename T>
+std::optional<Identifiable> Grid<T>::tryGetID(IntPoint2 point){
+    if (!isValidPoint(point))
+        return std::nullopt;
+    return matrix[point.y][point.x];
+}
+
+template <typename T>
+std::optional<T> Grid<T>::tryGetTile(IntPoint2 point){
+    if (auto id = tryGetID(point))
+        return tileset[id];
+    return std::nullopt;
 }
 
 template <typename T> 
