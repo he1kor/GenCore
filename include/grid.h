@@ -83,7 +83,7 @@ int Grid<T>::getHeight() const{
 
 template <typename T>
 bool Grid<T>::isEmpty(int x, int y){
-    return grid.at(y).at(x) == Identifiable::nullID;
+    return matrix.at(y).at(x) == Identifiable::nullID;
 }
 
 template <typename T>
