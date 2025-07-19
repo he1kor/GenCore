@@ -12,9 +12,9 @@
 #include "identifiable.h"
 #include "random_generator.h"
 
-struct ZoneTile : IntPoint2{
-    ZoneTile(IntPoint2 point, Identifiable id) : IntPoint2{point.x, point.y}, zoneID(id){};
-    ZoneTile(int x, int y, Identifiable id) : IntPoint2{x, y}, zoneID(id){};
+struct ZoneTile : IntVector2{
+    ZoneTile(IntVector2 point, Identifiable id) : IntVector2{point.x, point.y}, zoneID(id){};
+    ZoneTile(int x, int y, Identifiable id) : IntVector2{x, y}, zoneID(id){};
     Identifiable zoneID;
 };
 
@@ -49,7 +49,7 @@ class ZoneBloater : public Simulator{
         std::queue<std::shared_ptr<ZoneTile>> nextExpanders;
         int max_expanders = 0;
         int currentStepSize = 0;
-        double diagonalChance = 0.4121;
+        double diagonalChance = 0.7071;
         BloatMode bloatMode = BloatMode::STRAIGHT;
         using AlgoFunc = void (ZoneBloater::*)(std::shared_ptr<ZoneTile>);
         AlgoFunc bloatStep = &ZoneBloater::straightVoronoiStep;
@@ -133,7 +133,7 @@ void ZoneBloater<T, EdgeType>::straightVoronoiStep(std::shared_ptr<ZoneTile> act
 
     grid->setTile(x, y, activeTile->zoneID);
 
-    IntPoint2 tempPoint = {x - 1, y};
+    IntVector2 tempPoint = {x - 1, y};
     if (grid->isValidPoint(tempPoint))
         nextExpanders.push(std::make_shared<ZoneTile>(ZoneTile(tempPoint, activeTile->zoneID)));
 
@@ -159,7 +159,7 @@ void ZoneBloater<T, EdgeType>::diagonalRandomVoronoiStep(std::shared_ptr<ZoneTil
     }
     straightVoronoiStep(activeTile);
 
-    IntPoint2 tempPoint = {x - 1, y - 1};
+    IntVector2 tempPoint = {x - 1, y - 1};
     if (grid->isValidPoint(tempPoint) && RandomGenerator::instance().chanceOccurred(diagonalChance))
         nextExpanders.push(std::make_shared<ZoneTile>(ZoneTile(tempPoint, activeTile->zoneID)));
 

@@ -21,10 +21,10 @@ int doubleToIndex(double value, double size) {
     return static_cast<int>(std::floor(value));
 }
 
-IntPoint2 rasterizePoint2(const DoublePoint2& doublePoint2, double width, double height){
+IntVector2 rasterizePoint2(const DoubleVector2& DoubleVector2, double width, double height){
     return {
-        doubleToIndex(doublePoint2.x, width),
-        doubleToIndex(doublePoint2.y, height)
+        doubleToIndex(DoubleVector2.x, width),
+        doubleToIndex(DoubleVector2.y, height)
     };
 }
 

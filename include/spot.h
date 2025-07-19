@@ -3,9 +3,10 @@
 #include <memory>
 #include "identifiable.h"
 #include "2d.h"
+#include "magnet.h"
 
 template<typename T>
-class Spot {
+class Spot : private DoubleVector2 {
     static_assert(std::is_base_of_v<Identifiable, T>, "T must inherit from Identifiable");
     public:
         Spot();
@@ -15,26 +16,24 @@ class Spot {
         void setY(double y);
         void changeX(double dx);
         void changeY(double dy);
-        DoublePoint2 getCoords();
+        DoubleVector2 getCoords();
         double getX() const;
         double getY() const;
         const T& getValue() const;
         Identifiable getIdentifiable() const;
         
     private:
-        double x;
-        double y;
         T t;
 };
 
 template <typename T>
-Spot<T>::Spot() : x(-1), y(-1), t(T()) {}
+Spot<T>::Spot() : DoubleVector2{-1, -1}, t(T()) {}
 
 template <typename T>
-Spot<T>::Spot(double x, double y) : x(x), y(y), t(T()) {}
+Spot<T>::Spot(double x, double y) : DoubleVector2{x, y}, t(T()) {}
 
 template <typename T>
-Spot<T>::Spot(double x, double y, T t) : x(x), y(y), t(t) {}
+Spot<T>::Spot(double x, double y, T t) : DoubleVector2{x, y}, t(t) {}
 
 template <typename T>
 void Spot<T>::setX(double x) {
@@ -77,6 +76,6 @@ Identifiable Spot<T>::getIdentifiable() const {
 }
 
 template <typename T>
-DoublePoint2 Spot<T>::getCoords() {
+DoubleVector2 Spot<T>::getCoords() {
     return {x, y};
 }

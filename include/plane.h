@@ -64,6 +64,10 @@ public:
         spots.clear();
         ids.clear();
     }
+
+    DoubleVector2 getSize() const{
+        return {width, height};
+    }
     
     double getWidth() const {
         return width;
@@ -83,8 +87,8 @@ public:
     double getRelativeY(Identifiable id) const{
         return getSpot(id).getY() - getUpperY();
     }
-    DoublePoint2 getRelativePosition(Identifiable id) const{
-        return DoublePoint2(getRelativeX(id), getRelativeY(id));
+    DoubleVector2 getRelativePosition(Identifiable id) const{
+        return DoubleVector2(getRelativeX(id), getRelativeY(id));
     }
 
     const Spot<T>& getSpot(Identifiable id) const {
