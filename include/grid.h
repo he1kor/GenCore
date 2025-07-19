@@ -18,7 +18,7 @@ class Grid{
         Grid(int width, int height, R&& range);
 
         void setTile(int x, int y, Identifiable value);
-        void setTile(IntPoint2 point, Identifiable value);
+        void setTile(IntVector2 point, Identifiable value);
         Identifiable getTileID(int x, int y) const;
         const std::vector<Identifiable>& getTileIDs() const;
         T getTile(int x, int y) const;
@@ -26,12 +26,14 @@ class Grid{
         int getHeight() const;
         
         bool isEmpty(int x, int y);
-        bool isEmpty(IntPoint2 point);
+        bool isEmpty(IntVector2 point);
 
-        bool isValidPoint(IntPoint2 point2);
+        std::vector<T> applyToDoublePoints(DoubleVector2 size);
 
-        std::optional<Identifiable>tryGetID(IntPoint2 point2);
-        std::optional<T>tryGetTile(IntPoint2 point2);
+        bool isValidPoint(IntVector2 point2);
+
+        std::optional<Identifiable>tryGetID(IntVector2 point2);
+        std::optional<T>tryGetTile(IntVector2 point2);
 
     private:
         int width = -1;
@@ -40,6 +42,9 @@ class Grid{
         std::unordered_map<Identifiable, T, IDHash> tileset;
         std::vector<Identifiable> tileIDs;
 };
+
+
+
 
 template <typename T> 
 Grid<T>::Grid(int width, int height) : width(width), height(height){
@@ -52,7 +57,7 @@ void Grid<T>::setTile(int x, int y, Identifiable value){
 }
 
 template <typename T>
-void Grid<T>::setTile(IntPoint2 point, Identifiable value){
+void Grid<T>::setTile(IntVector2 point, Identifiable value){
     matrix.at(point.y).at(point.x) = value;
 }
 
@@ -87,12 +92,31 @@ bool Grid<T>::isEmpty(int x, int y){
 }
 
 template <typename T>
-bool Grid<T>::isEmpty(IntPoint2 point){
+bool Grid<T>::isEmpty(IntVector2 point){
     return isEmpty(point.x, point.y);
 }
 
 template <typename T>
-bool Grid<T>::isValidPoint(IntPoint2 point){
+std::vector<T> Grid<T>::applyToDoublePoints(DoubleVector2 size){
+    static_assert(std::is_base_of_v<DoubleVector2, T>, "T must inherit from DoubleVector2");
+    std::vector<T> result;
+    for (int y = 0; y < getHeight(); y++){
+        for (int x = 0; x < getWidth(); x++){
+            if (!isEmpty(x, y)){
+                DoubleVector2& point = getTile(x, y);
+                double yPercentage = static_cast<double>(y) / (getHeight() - 1);
+                double xPercentage = static_cast<double>(x) / (getWidth() - 1);
+                point.x = size.x * xPercentage;
+                point.y = size.y * yPercentage;
+                result.push_back(point);
+            }
+        }
+    }
+    return result;
+}
+
+template <typename T>
+bool Grid<T>::isValidPoint(IntVector2 point){
     if (point.x < 0 || point.y < 0)
         return false;
     if (point.x >= getWidth() || point.y >= getHeight())
@@ -101,14 +125,14 @@ bool Grid<T>::isValidPoint(IntPoint2 point){
 }
 
 template <typename T>
-std::optional<Identifiable> Grid<T>::tryGetID(IntPoint2 point){
+std::optional<Identifiable> Grid<T>::tryGetID(IntVector2 point){
     if (!isValidPoint(point))
         return std::nullopt;
     return matrix[point.y][point.x];
 }
 
 template <typename T>
-std::optional<T> Grid<T>::tryGetTile(IntPoint2 point){
+std::optional<T> Grid<T>::tryGetTile(IntVector2 point){
     if (auto id = tryGetID(point))
         return tileset[id];
     return std::nullopt;
