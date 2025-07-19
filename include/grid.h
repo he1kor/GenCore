@@ -12,6 +12,7 @@ class Grid{
     static_assert(std::is_base_of_v<Identifiable, T>, "T must inherit from Identifiable");
     public:
         Grid(int width, int height);
+        Grid(const std::vector<std::vector<T>>& matrix);
 
         template<std::ranges::input_range R>
         requires std::convertible_to<std::ranges::range_value_t<R>, T>
@@ -49,6 +50,28 @@ class Grid{
 template <typename T> 
 Grid<T>::Grid(int width, int height) : width(width), height(height){
     matrix = std::vector<std::vector<Identifiable>>(height, std::vector<Identifiable>(width));
+}
+
+template <typename T>
+Grid<T>::Grid(const std::vector<std::vector<T>>& matrix){
+    if (matrix.empty()){
+        this->width = 0;
+        this->height = 0;
+        return;
+    }
+    this->matrix = std::vector<std::vector<T>>(matrix.size());
+    size_t width = matrix[0].size();
+    for (int y = 0; y < matrix.size(); y++){
+        this->matrix[y].reserve(width);
+        for (int x = 0 ; x < width; x++){
+            auto const& value = matrix.at[y].at[x];
+            if (!tileset.count(value)){
+                tileset[static_cast<Identifiable>(value)] = value;
+                tileIDs.push_back(static_cast<Identifiable>(value));
+            }
+            this->matrix[y].push_back(matrix[y][x]);
+        }
+    }
 }
 
 template <typename T>
