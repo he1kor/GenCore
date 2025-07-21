@@ -73,7 +73,7 @@ GenCore is built with CMake. To use it in your project:
 
 1. **Clone the repository** or add it as a submodule to your project:
   ```bash
-  git clone https://github.com/yourusername/GenCore.git
+  git clone https://github.com/he1kor/GenCore.git
   ```
 
 2. **Add to your CMake project:**
