@@ -26,8 +26,6 @@ void Magnetic::reversePole(){
 
 Magnetic::Magnetic(){}
 
-Magnetic::Magnetic(double susceptibility) : susceptibility{susceptibility}{}
-
 void Magnetic::setSuspectibility(double val){
     this->susceptibility = val;
 }
