@@ -47,7 +47,8 @@ void EdgeGraph<NodeT, EdgeT>::initializeEdgeIDs(){
     int max_edge_id = 0;
     for (Identifiable id : this->getIDs()){
         auto node1 = this->getNode(id);
-        for (const Node<NodeT>& node2 : node1.getNeighbours()){
+        for (Identifiable id2 : node1.getNeighbours()){
+            const Node<NodeT>& node2 = this->getNode(id2);
             if (edgeIDs.count(std::make_pair(node2.getID(), node1.getID()))){
                 edgeIDs[std::make_pair(node1.getID(), node2.getID())] = edgeIDs.at(std::make_pair(node2.getID(), node1.getID()));
                 continue;
