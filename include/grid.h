@@ -4,6 +4,8 @@
 #include <unordered_map>
 #include <optional>
 
+#include <iostream>
+
 #include "2d.h"
 #include "identifiable.h"
 
@@ -59,12 +61,13 @@ Grid<T>::Grid(const std::vector<std::vector<T>>& matrix){
         this->height = 0;
         return;
     }
-    this->matrix = std::vector<std::vector<T>>(matrix.size());
+    size_t height = matrix.size();
     size_t width = matrix[0].size();
-    for (int y = 0; y < matrix.size(); y++){
+    this->matrix = std::vector<std::vector<Identifiable>>(height);
+    for (int y = 0; y < height; y++){
         this->matrix[y].reserve(width);
         for (int x = 0 ; x < width; x++){
-            auto const& value = matrix.at[y].at[x];
+            const T& value = matrix.at(y).at(x);
             if (!tileset.count(value)){
                 tileset[static_cast<Identifiable>(value)] = value;
                 tileIDs.push_back(static_cast<Identifiable>(value));
@@ -72,6 +75,8 @@ Grid<T>::Grid(const std::vector<std::vector<T>>& matrix){
             this->matrix[y].push_back(matrix[y][x]);
         }
     }
+    this->width = width;
+    this->height = height;
 }
 
 template <typename T>
@@ -121,16 +126,16 @@ bool Grid<T>::isEmpty(IntVector2 point){
 
 template <typename T>
 std::vector<T> Grid<T>::applyToDoublePoints(DoubleVector2 size){
-    static_assert(std::is_base_of_v<DoubleVector2, T>, "T must inherit from DoubleVector2");
+    static_assert(std::is_base_of_v<SafeDoubleVector2, T>, "T must inherit from SafeDoubleVector2");
     std::vector<T> result;
     for (int y = 0; y < getHeight(); y++){
         for (int x = 0; x < getWidth(); x++){
             if (!isEmpty(x, y)){
-                DoubleVector2& point = getTile(x, y);
+                T point = getTile(x, y);
                 double yPercentage = static_cast<double>(y) / (getHeight() - 1);
                 double xPercentage = static_cast<double>(x) / (getWidth() - 1);
-                point.x = size.x * xPercentage;
-                point.y = size.y * yPercentage;
+                point.setX(size.x * xPercentage);
+                point.setY(size.y * yPercentage);
                 result.push_back(point);
             }
         }
