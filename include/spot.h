@@ -6,19 +6,15 @@
 #include "magnet.h"
 
 template<typename T>
-class Spot : private DoubleVector2 {
+class Spot : public SafeDoubleVector2 {
     static_assert(std::is_base_of_v<Identifiable, T>, "T must inherit from Identifiable");
     public:
         Spot();
         Spot(double x, double y);
         Spot(double x, double y, T t);
-        void setX(double x);
-        void setY(double y);
         void changeX(double dx);
         void changeY(double dy);
-        DoubleVector2 getCoords();
-        double getX() const;
-        double getY() const;
+        DoubleVector2 getCoords() const;
         const T& getValue() const;
         Identifiable getIdentifiable() const;
         
@@ -27,23 +23,13 @@ class Spot : private DoubleVector2 {
 };
 
 template <typename T>
-Spot<T>::Spot() : DoubleVector2{-1, -1}, t(T()) {}
+Spot<T>::Spot() : SafeDoubleVector2{-1, -1}, t(T()) {}
 
 template <typename T>
-Spot<T>::Spot(double x, double y) : DoubleVector2{x, y}, t(T()) {}
+Spot<T>::Spot(double x, double y) : SafeDoubleVector2{x, y}, t(T()) {}
 
 template <typename T>
-Spot<T>::Spot(double x, double y, T t) : DoubleVector2{x, y}, t(t) {}
-
-template <typename T>
-void Spot<T>::setX(double x) {
-    this->x = x;
-}
-
-template <typename T>
-void Spot<T>::setY(double y) {
-    this->y = y;
-}
+Spot<T>::Spot(double x, double y, T t) : SafeDoubleVector2{x, y}, t(t) {}
 
 template <typename T>
 void Spot<T>::changeX(double dx) {
@@ -53,16 +39,6 @@ void Spot<T>::changeX(double dx) {
 template <typename T>
 void Spot<T>::changeY(double dy) {
     y += dy;
-}
-
-template <typename T>
-double Spot<T>::getX() const {
-    return x;
-}
-
-template <typename T>
-double Spot<T>::getY() const {
-    return y;
 }
 
 template <typename T>
@@ -76,6 +52,6 @@ Identifiable Spot<T>::getIdentifiable() const {
 }
 
 template <typename T>
-DoubleVector2 Spot<T>::getCoords() {
+DoubleVector2 Spot<T>::getCoords() const {
     return {x, y};
 }
