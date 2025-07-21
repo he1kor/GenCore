@@ -5,10 +5,10 @@
 
 #include <iostream>
 
-class MagneticNode : public Magnetic, public Identifiable{
+class BasicNode : public Magnetic, public Identifiable{
     public:
-        MagneticNode() : Magnetic{0}, Identifiable{Identifiable::nullID}{};
-        MagneticNode(int id, double suspectibility) : Magnetic{suspectibility}, Identifiable{id}{};
+        BasicNode() : Magnetic{0}, Identifiable{Identifiable::nullID}{};
+        BasicNode(int id, double suspectibility) : Magnetic{suspectibility}, Identifiable{id}{};
     private:
 
 };
