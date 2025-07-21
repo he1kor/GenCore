@@ -9,6 +9,22 @@
 #include "2d.h"
 #include "identifiable.h"
 
+
+#include <exception>
+#include <string>
+
+class NoTileException : public std::exception {
+private:
+    std::string message;
+    
+public:
+    explicit NoTileException(const std::string& msg) : message(msg) {}
+    
+    const char* what() const noexcept override {
+        return message.c_str();
+    }
+};
+
 template<typename T>
 class Grid{
     static_assert(std::is_base_of_v<Identifiable, T>, "T must inherit from Identifiable");
@@ -20,11 +36,13 @@ class Grid{
         requires std::convertible_to<std::ranges::range_value_t<R>, T>
         Grid(int width, int height, R&& range);
 
+        void checkTilesetValidness(Identifiable id) const;
         void setTile(int x, int y, Identifiable value);
         void setTile(IntVector2 point, Identifiable value);
         Identifiable getTileID(int x, int y) const;
         const std::vector<Identifiable>& getTileIDs() const;
         T getTile(int x, int y) const;
+        T getTile(Identifiable id) const;
         int getWidth() const;
         int getHeight() const;
         
@@ -80,7 +98,18 @@ Grid<T>::Grid(const std::vector<std::vector<T>>& matrix){
 }
 
 template <typename T>
-void Grid<T>::setTile(int x, int y, Identifiable value){
+void Grid<T>::checkTilesetValidness(Identifiable id) const{
+    if (!tileset.count(id)){
+        if (id == Identifiable::nullID)
+            throw NoTileException("The provided ID is nullID\n");
+        else
+            throw NoTileException("bad tileset - No tile is related to the given ID\n");
+    }
+}
+
+template <typename T>
+void Grid<T>::setTile(int x, int y, Identifiable value)
+{
     matrix.at(y).at(x) = value;
 }
 
@@ -101,7 +130,14 @@ const std::vector<Identifiable>& Grid<T>::getTileIDs() const{
 
 template <typename T>
 T Grid<T>::getTile(int x, int y) const{
-    return tileset.at(matrix.at(y).at(x));
+    Identifiable id = getTileID(x, y);
+    return getTile(id);
+}
+
+template <typename T>
+T Grid<T>::getTile(Identifiable id) const{
+    checkTilesetValidness(id);
+    return tileset.at(id);
 }
 
 template <typename T>
@@ -161,8 +197,9 @@ std::optional<Identifiable> Grid<T>::tryGetID(IntVector2 point){
 
 template <typename T>
 std::optional<T> Grid<T>::tryGetTile(IntVector2 point){
-    if (auto id = tryGetID(point))
-        return tileset[id];
+    if (auto id = tryGetID(point)){
+        return getTile(id);
+    }
     return std::nullopt;
 }
 
