@@ -17,6 +17,7 @@ class Node{
         void clearNeighbours();
         const std::set<Identifiable>& getNeighbours() const;
         Identifiable getID() const;
+        const T& getValue() const;
     private:
         T value;
         std::set<Identifiable> neighbours;
@@ -38,6 +39,7 @@ class Graph{
         virtual void separate(Identifiable id);
         int getSize() const;
         const Node<T>& getNode(Identifiable id) const;
+        const T& getValue(Identifiable id) const;
         const std::set<Identifiable>& getNeighbours(Identifiable id) const;
         const std::vector<Identifiable>& getIDs() const;
         int size() const;
@@ -83,8 +85,14 @@ const std::set<Identifiable> &Node<T>::getNeighbours() const{
 
 template<typename T>
 Identifiable Node<T>::getID() const{
+    return static_cast<Identifiable>(value);
+}
+
+template<typename T>
+const T& Node<T>::getValue() const{
     return value;
 }
+
 
 
 
@@ -143,6 +151,12 @@ const Node<T> &Graph<T>::getNode(Identifiable id) const{
 template<typename T>
 const std::set<Identifiable> &Graph<T>::getNeighbours(Identifiable id) const{
     return getNode(id).getNeighbours();
+}
+
+
+template<typename T>
+const T& Graph<T>::getValue(Identifiable ID) const{
+    return getNode(ID).getValue();
 }
 
 template<typename T>
