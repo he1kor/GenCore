@@ -9,9 +9,28 @@
 #include <memory>
 #include <unordered_map>
 #include <stack>
+#include <cassert>
 
+#include "math_util.h"
 #include "graph.h" 
 #include "plane.h"
+#include "grid.h"
+
+struct IdentifiedMagnet : public Identifiable, public Magnet{
+    public:
+        IdentifiedMagnet(double force) : Identifiable(id), Magnet(force){id++;};
+        IdentifiedMagnet(int id = Identifiable::nullID) : Identifiable(id), Magnet(0){};
+        static inline int id = 0;
+};
+
+static Grid<IdentifiedMagnet> cornerMagnets = Grid<IdentifiedMagnet>(
+    {
+        {{}, {}, {}},
+        {{}, -1.0, {}},
+        {{}, {}, {}}
+    }
+);
+
 
 template<typename T>
 class EmbeddablePlane : public Plane<T>{
@@ -25,85 +44,72 @@ class EmbeddablePlane : public Plane<T>{
         bool isEmbedding();
         void updateTempSpots();
         void setupTempSpots();
+        void calculateZoneRadius();
+        void applyMagnetGrid(Grid<IdentifiedMagnet> magnetRelativePoses);
 
     private:
-        DoublePoint2 getClosestPointOnEdge(const DoublePoint2 point, const DoublePoint2 end1, const DoublePoint2 end2);
+        DoubleVector2 getClosestPointOnEdge(const DoubleVector2 point, const DoubleVector2 end1, const DoubleVector2 end2);
         void applyRepulse(double temperature);
         void applyBorderRepulseToSpot(Identifiable id, double temperature);
         void clampToBorder(Identifiable id);
         void commitSpots();
         void applyEdgeRepulse(double temperature);
+        void applyMagnetForces(double temperature);
         void applyAttraction(double temperature);
+
+        
         int currentIteration = -1;
-        const int iterationsMax = 100;
-        const int repulsionEdgeIterationsMax = 100;
-        const int repulsionIterationsMax = 140;
-        const double minDistanceRepulsion = 2.0;
-        const double kEdgeRepulsion = 5.0f;
-        const double kRepulsion = 15.0;
-        const double kAttraction = 0.150;
-        const double idealLength = 5.0;
-        const double minimumTemperature = 0.01;
+        double idealLength = 5.0;
+        
         std::shared_ptr<const Graph<T>> currentGraph;
         std::unordered_map<Identifiable, Spot<T>, IDHash> temp_spots;
+        std::vector<IdentifiedMagnet> magnets;
+        
+        const int iterationsMax = 100;
+        const int repulsionEdgeIterationsMax = 100;
+        const int repulsionIterationsMax = 120;
+        const double minDistanceRepulsion = 2.0;
+        const double kEdgeRepulsion = 30.0f;
+        const double kRepulsion = 17.0;
+        const double kBorderRepulsion = 57.0;
+        const double kAttraction = 0.150;
+        const bool squareDistance = true;
+        const double minimumTemperature = 0.01;
+        const double magnetForceIterationMin = 20;
+        const double magnetForceIterationMax = 120;
 };
 
 #include <random>
 
 template<typename T> void EmbeddablePlane<T>::initEmbed(std::shared_ptr<const Graph<T>> graph){
+    this->currentGraph = graph;
+    calculateZoneRadius();
+    this->clear();
+    
     std::random_device rd;
     std::mt19937 rng(rd());
     std::uniform_real_distribution<double> distWidth(0, EmbeddablePlane<T>::getWidth());
     std::uniform_real_distribution<double> distHeight(0, EmbeddablePlane<T>::getHeight());
-
-    //addSpot(Spot(64, 62, 0));
-    //addSpot(Spot(72, 66, 1));
-    //addSpot(Spot(56, 82, 2));
-    //addSpot(Spot(60, 58, 3));
-    //addSpot(Spot(56, 50, 4));
-    // Outer pentagon (nodes 0-4)
-    // this->insertSpot(Spot<T>(64, 16, T(0)));    // Top-center
-    // this->insertSpot(Spot<T>(96, 32, T(1)));    // Upper-right
-    // this->insertSpot(Spot<T>(112, 80, T(2)));   // Far-right
-    // this->insertSpot(Spot<T>(80, 112, T(3)));   // Lower-right
-    // this->insertSpot(Spot<T>(32, 112, T(4)));   // Lower-left
-
-    // // Inner layer (nodes 5-9)
-    // this->insertSpot(Spot<T>(96, 64, T(5)));    // Right-middle
-    // this->insertSpot(Spot<T>(80, 48, T(6)));    // Right-upper-center
-    // this->insertSpot(Spot<T>(80, 80, T(7)));    // Right-lower-center
-    // this->insertSpot(Spot<T>(48, 80, T(8)));    // Left-lower-center
-    // this->insertSpot(Spot<T>(32, 64, T(9)));    // Left-middle
-
-    // // Central hub (node 10) and extensions (nodes 11-15)
-    // this->insertSpot(Spot<T>(64, 64, T(10)));   // Exact center
-    // this->insertSpot(Spot<T>(48, 48, T(11)));   // Upper-left-center
-    // this->insertSpot(Spot<T>(64, 32, T(12)));   // Top-inner
-    // this->insertSpot(Spot<T>(48, 32, T(13)));   // Upper-left
-    // this->insertSpot(Spot<T>(32, 48, T(14)));   // Left-upper-center
-    // this->insertSpot(Spot<T>(32, 16, T(15)));   // Far-left-top
-
+    
+    int attempts = 0;
     for (int i = 0; i < graph->size(); ++i) {
-        bool valid = false;
-        while (!valid) {
-            Identifiable id1 = graph->getIDs()[i];
-            auto spot = Spot<Identifiable>(distWidth(rng), distHeight(rng), id1);
-            this->insertSpot(spot);
-            valid = true;
-            // Ensure no two points are too close initially
-            for (int j = 0; j < i; ++j) {
-                Identifiable id2 = graph->getIDs()[j];
-                double dx = this->getSpot(id1).getX() - this->getSpot(id2).getX();
-                double dy = this->getSpot(id1).getY() - this->getSpot(id2).getY();
-                double dist = std::sqrt(dx*dx + dy*dy);
-                if (dist < idealLength / 2) {
-                    valid = false;
-                    break;
-                }
+        Identifiable id1 = graph->getIDs()[i];
+        auto spot = Spot<T>(distWidth(rng), distHeight(rng), graph->getValue(id1));
+        this->insertSpot(spot);
+        // Ensure no two points are too close initially
+        for (int j = 0; j < i; ++j) {
+            Identifiable id2 = graph->getIDs()[j];
+            double dx = this->getSpot(id1).getX() - this->getSpot(id2).getX();
+            double dy = this->getSpot(id1).getY() - this->getSpot(id2).getY();
+            double dist = std::sqrt(dx*dx + dy*dy);
+            if (dist < idealLength / 2) {
+                assert(attempts < 1000);
+                i = -1;
+                this->clear();
+                break;
             }
         }
     }
-    this->currentGraph = graph;
     currentIteration = 0;
 }
 
@@ -116,9 +122,11 @@ template<typename T> bool EmbeddablePlane<T>::stepForceDirected(){
 
     double attractiveTemperature = (1.0 - (double)currentIteration/iterationsMax) + minimumTemperature;
     double repulsionTemperature = (1.0 - (double)currentIteration/repulsionIterationsMax) + minimumTemperature;
+    double magnetTemperature = ((double)currentIteration/repulsionIterationsMax) + minimumTemperature;
 
     applyRepulse(repulsionTemperature);
-    applyAttraction(attractiveTemperature);    
+    applyAttraction(attractiveTemperature);
+    applyMagnetForces(magnetTemperature);
 
     for (Identifiable id : this->getIDs()) {
         clampToBorder(id);
@@ -143,6 +151,7 @@ template<typename T> bool EmbeddablePlane<T>::stepForceDirectedStable(){
     applyRepulse(repulsionTemperature, new_points);
     applyAttraction(attractiveTemperature, new_points);
     applyEdgeRepulse(repulsionEdgeTemperature, new_points);
+    applyMagnetForces(repulsionTemperature);
 
     for (int i = 0; i < EmbeddablePlane<T>::getSpotsNumber(); ++i) {
         new_points[i].setX(std::max(0.0, std::min(EmbeddablePlane<T>::getWidth(), new_points[i].getX())));
@@ -184,10 +193,19 @@ void EmbeddablePlane<T>::setupTempSpots(){
     }
 }
 
-template<typename T> DoublePoint2 EmbeddablePlane<T>::getClosestPointOnEdge(const DoublePoint2 point, const DoublePoint2 end1, const DoublePoint2 end2){
-    DoublePoint2 segment = {end2.x - end1.x, end2.y - end1.y};
+template <typename T>
+void EmbeddablePlane<T>::calculateZoneRadius(){
+    constexpr double shapeFactor = 3.5;
+    double averageZoneArea = (this->getWidth() * this->getHeight()) / currentGraph->getSize() / shapeFactor;
+    double averageZoneRadius = std::sqrt(averageZoneArea);
+    idealLength = averageZoneRadius;
+}
+
+
+template<typename T> DoubleVector2 EmbeddablePlane<T>::getClosestPointOnEdge(const DoubleVector2 point, const DoubleVector2 end1, const DoubleVector2 end2){
+    DoubleVector2 segment = {end2.x - end1.x, end2.y - end1.y};
     
-    DoublePoint2 p1_to_p = {point.x - end1.x, point.y - end1.y};
+    DoubleVector2 p1_to_p = {point.x - end1.x, point.y - end1.y};
     
     double segmentLengthSquared = segment.x * segment.x + segment.y * segment.y;
     
@@ -199,7 +217,7 @@ template<typename T> DoublePoint2 EmbeddablePlane<T>::getClosestPointOnEdge(cons
     
     t = std::max(0.0, std::min(1.0, t));
     
-    DoublePoint2 closest = {
+    DoubleVector2 closest = {
         end1.x + t * segment.x,
         end1.y + t * segment.y
     };
@@ -207,8 +225,7 @@ template<typename T> DoublePoint2 EmbeddablePlane<T>::getClosestPointOnEdge(cons
     return closest;
 }
 
-template<typename T> void EmbeddablePlane<T>::applyRepulse(double temperature)
-{
+template<typename T> void EmbeddablePlane<T>::applyRepulse(double temperature){
     if (currentIteration > repulsionIterationsMax){
         return;
     }
@@ -230,19 +247,22 @@ template<typename T> void EmbeddablePlane<T>::applyRepulse(double temperature)
 template <typename T>
 void EmbeddablePlane<T>::applyBorderRepulseToSpot(Identifiable id, double temperature){
     double upperDistance = std::max(minDistanceRepulsion, this->getSpot(id).getY() - this->getUpperY());
-    double upperForce = kRepulsion * temperature / (upperDistance * upperDistance); 
+    double upperForce = kBorderRepulsion * temperature / (upperDistance * upperDistance); 
     
     double bottomDistance = std::max(minDistanceRepulsion, this->getBottomY() - this->getSpot(id).getY());
-    double bottomForce = kRepulsion * temperature / (bottomDistance * bottomDistance * -1);
+    double bottomForce = kBorderRepulsion * temperature / (bottomDistance * bottomDistance * -1);
     
     double leftDistance = std::max(minDistanceRepulsion, this->getSpot(id).getX() - this->getLeftX());
-    double leftForce = kRepulsion * temperature / (leftDistance * leftDistance);
+    double leftForce = kBorderRepulsion * temperature / (leftDistance * leftDistance);
     
     double rightDistance = std::max(minDistanceRepulsion, this->getRightX() - this->getSpot(id).getX());
-    double rightForce = kRepulsion * temperature / (rightDistance * rightDistance * -1);
+    double rightForce = kBorderRepulsion * temperature / (rightDistance * rightDistance * -1);
 
-    temp_spots.at(id).changeX(leftForce + rightForce);
-    temp_spots.at(id).changeY(bottomForce + upperForce);
+    double dx = leftForce + rightForce;
+    double dy = upperForce + bottomForce;
+
+    temp_spots.at(id).changeX(dx);
+    temp_spots.at(id).changeY(dy);
 }
 
 template <typename T>
@@ -268,7 +288,7 @@ void EmbeddablePlane<T>::applyEdgeRepulse(double temperature){
             for (Identifiable end2_id : currentGraph->getNode(end1_id).getNeighbours()){
                 if (end2_id == spot_id || end2_id >= end1_id)
                     continue;
-                DoublePoint2 edgeSpot = getClosestPointOnEdge(temp_spots[spot_id].getCoords(), temp_spots[end1_id].getCoords(), temp_spots[end2_id].getCoords());
+                DoubleVector2 edgeSpot = getClosestPointOnEdge(temp_spots[spot_id].getCoords(), temp_spots[end1_id].getCoords(), temp_spots[end2_id].getCoords());
                 double dx = edgeSpot.x - this->getSpot(spot_id).getX();
                 double dy = edgeSpot.y - this->getSpot(spot_id).getY();
                 double distanceSquared = std::max(minDistanceRepulsion, dx*dx + dy*dy);
@@ -278,6 +298,22 @@ void EmbeddablePlane<T>::applyEdgeRepulse(double temperature){
                 temp_spots[spot_id].changeY(-force * dy);
             }
         }
+    }
+}
+
+template <typename T>
+void EmbeddablePlane<T>::applyMagnetForces(double temperature){
+    temperature = 1.0;
+    if (currentIteration < magnetForceIterationMin || currentIteration > magnetForceIterationMax)
+        return;
+    for (const Magnet& magnet : magnets){
+        for (Identifiable id : this->getIDs()) {
+            if (this->getValue(id).getSuspectibility() == 0)
+                continue;
+            DoubleVector2 force = magnet.calculateForce<T>(this->getSpot(id).getCoords(), this->getValue(id)) * temperature;
+            temp_spots[id].changeX(force.x); 
+            temp_spots[id].changeX(force.y); 
+        }       
     }
 }
 
@@ -299,5 +335,12 @@ template<typename T> void EmbeddablePlane<T>::applyAttraction(double temperature
             temp_spots[neighbor_id].changeX(-force * dx);
             temp_spots[neighbor_id].changeY(-force * dy);
         }
+    }
+}
+
+template <typename T>
+void EmbeddablePlane<T>::applyMagnetGrid(Grid<IdentifiedMagnet> magnetRelativePoses){
+    magnets = magnetRelativePoses.applyToDoublePoints(this->getSize());
+    for (auto magnet : magnets){
     }
 }
