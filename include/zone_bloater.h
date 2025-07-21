@@ -49,7 +49,8 @@ class ZoneBloater : public Simulator{
         std::queue<std::shared_ptr<ZoneTile>> nextExpanders;
         int max_expanders = 0;
         int currentStepSize = 0;
-        double diagonalChance = 0.7071;
+        //double diagonalChance = 0.4714045207;
+        double diagonalChance = 0.4;
         BloatMode bloatMode = BloatMode::STRAIGHT;
         using AlgoFunc = void (ZoneBloater::*)(std::shared_ptr<ZoneTile>);
         AlgoFunc bloatStep = &ZoneBloater::straightVoronoiStep;
