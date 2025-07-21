@@ -28,7 +28,7 @@ enum class BloatMode{
     RANDOM_TREE
 };
 
-template<typename T, typename EdgeType>
+template<typename T, typename EdgeType = Identifiable>
 class ZoneBloater : public Simulator{
     public:
         //Empty grid tiles are considered NullID
@@ -90,7 +90,7 @@ template <typename T, typename EdgeType>
 void ZoneBloater<T, EdgeType>::onStep(){
     currentStepSize = nextExpanders.size();
     if (currentStepSize > max_expanders)
-        throw std::logic_error("Size is more than grid\n");
+        throw std::logic_error("Size is more than grid:\t" + std::to_string(currentStepSize) + "\n");
 
     for (int i = 0; i < currentStepSize; i++){
         std::shared_ptr<ZoneTile> activeTile = nextExpanders.front();
