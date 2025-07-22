@@ -18,7 +18,7 @@ class Simulator{
         Simulator& operator=(Simulator&&) = default;
 
         virtual void start() final;
-        virtual void step() final;
+        virtual bool step() final;
         virtual void finish() final;
         virtual void reset() final;
 

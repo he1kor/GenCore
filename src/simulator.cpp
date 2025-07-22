@@ -11,11 +11,12 @@ void Simulator::start(){
     onStart();
 }
 
-void Simulator::step(){
+bool Simulator::step(){
     if (status != SimulationStatus::RUNNING)
         throw std::logic_error("Can't step, the status is not RUNNING!");
     steps++;
     onStep();
+    return isRunning();
 }
 
 void Simulator::finish(){
