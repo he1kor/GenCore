@@ -50,6 +50,7 @@ std::shared_ptr<Grid<BasicNode>> generateMap() {
     // --- Phase 3: Zone Expansion ---
     ZoneBloater<BasicNode> zoneBloater;
     zoneBloater.initVoronoi(templates::grid3x3, map);
+    zoneBloater.start();
     while (zoneBloater.step()) {  // Progressively expands zones
         #if 0  // Debug: Uncomment to inspect tiles
         std::cout << "Progress: " << zoneBloater.getProgress() << "%\n";
