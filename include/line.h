@@ -8,51 +8,50 @@
 #include "2d.h"
 
 class RasterLine {
-    DoubleVector2 start;
-    DoubleVector2 end;
-    bool steep;
-    int dx, dy, ystep;
-    int length;
-    
-public:
-    RasterLine(DoubleVector2 p1, DoubleVector2 p2) : start(p1), end(p2) {
+private:
+    std::vector<IntVector2> points;
+    size_t length;
+
+    // Bresenham's line algorithm to generate all points
+    void generateLinePoints(IntVector2 p1, IntVector2 p2) {
         int x1 = p1.x, y1 = p1.y;
         int x2 = p2.x, y2 = p2.y;
-        
-        steep = std::abs(y2 - y1) > std::abs(x2 - x1);
-        if (steep) {
-            std::swap(x1, y1);
-            std::swap(x2, y2);
-        }
-        
-        if (x1 > x2) {
-            std::swap(x1, x2);
-            std::swap(y1, y2);
-        }
-        
-        dx = x2 - x1;
-        dy = std::abs(y2 - y1);
-        ystep = (y1 < y2) ? 1 : -1;
-        length = dx + 1;
-    }
-    
-    int size() const { return length; }
-    
-    DoubleVector2 operator[](int i) const {
-        if (i < 0 || i >= length) 
-            throw std::out_of_range("Line index out of range");
+
+        int dx = abs(x2 - x1);
+        int dy = abs(y2 - y1);
+        int sx = (x1 < x2) ? 1 : -1;
+        int sy = (y1 < y2) ? 1 : -1;
+        int err = dx - dy;
+
+        while (true) {
+            points.emplace_back(x1, y1);
+            if (x1 == x2 && y1 == y2) break;
             
-        int x1 = steep ? start.y : start.x;
-        int y1 = steep ? start.x : start.y;
-        
-        int x = x1 + i;
-        int error = (i * dy) % dx;
-        int y = y1 + (i * dy) / dx * ystep;
-        
-        if (2*error > dx) {
-            y += ystep;
+            int e2 = 2 * err;
+            if (e2 > -dy) {
+                err -= dy;
+                x1 += sx;
+            }
+            if (e2 < dx) {
+                err += dx;
+                y1 += sy;
+            }
         }
         
-        return steep ? DoubleVector2{y, x} : DoubleVector2{x, y};
+        length = points.size();
+    }
+
+public:
+    RasterLine(IntVector2 p1, IntVector2 p2) {
+        generateLinePoints(p1, p2);
+    }
+
+    size_t size() const { return length; }
+
+    IntVector2 operator[](size_t i) const {
+        if (i >= length) {
+            throw std::out_of_range("Index out of range in RasterLine");
+        }
+        return points[i];
     }
 };
