@@ -42,6 +42,17 @@ namespace templates{
             {{13, 1, 0}, {8, 10, 12}}
         }
         ));
+
+        static std::shared_ptr<const EdgeGraph<RadialNode>> jebusCross = std::make_shared<const EdgeGraph<RadialNode>>(
+        EdgeGraph<RadialNode>(std::vector<std::pair<RadialNode, std::vector<Identifiable>>>
+            {
+                {{0, 2, 0}, {4}},
+                {{1, 2, 0}, {4}},
+                {{2, 2, 0}, {4}},
+                {{3, 2, 0}, {4}},
+                {{4, 3, 0}, {0, 1, 2, 3}}
+            }
+        ));
     }
 
 
