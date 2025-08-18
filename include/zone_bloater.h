@@ -3,6 +3,7 @@
 #include <memory>
 #include <queue>
 
+#include "self_pointer.h"
 
 #include "grid.h"
 #include "edge_graph.h"
@@ -12,25 +13,10 @@
 #include "random_generator.h"
 #include "radial.h"
 #include "line.h"
-
-struct ZoneTile : IntVector2{
-    ZoneTile(IntVector2 point, Identifiable id) : IntVector2{point.x, point.y}, zoneID(id){};
-    ZoneTile(int x, int y, Identifiable id) : IntVector2{x, y}, zoneID(id){};
-    Identifiable zoneID;
-};
-
-struct TreeRandomZoneTile : ZoneTile{
-    
-};
-
-enum class BloatMode{
-    STRAIGHT,
-    RANDOM_DIAGONAL,
-    RANDOM_TREE
-};
+#include "bloat_strategy.h"
 
 template<typename T, typename EdgeType = Identifiable>
-class ZoneBloater : public Simulator{
+class ZoneBloater : public Simulator, public ZoneTilePusher{
     public:
         //Empty grid tiles are considered NullID
         void initVoronoi(std::shared_ptr<const EdgeGraph<T, EdgeType>> graph, std::shared_ptr<Grid<T>> initialGrid);
@@ -42,15 +28,17 @@ class ZoneBloater : public Simulator{
         std::shared_ptr<const EdgeGraph<T, EdgeType>> getGraph() const;
         std::shared_ptr<Grid<T>> getGrid() const;
 
-        void straightVoronoiStep(std::shared_ptr<ZoneTile> activeTile);
-        void diagonalRandomVoronoiStep(std::shared_ptr<ZoneTile> activeTile);
-
-        BloatMode getMode() const{return bloatMode;};
-        virtual void setMode(BloatMode bloatMode);
-
+        template <typename Strategy>
+        requires std::is_base_of_v<BloatStrategy, std::decay_t<Strategy>>
+        void setBloatMode(Strategy&& bloatStrategy);
         void setStartFromEdges(bool value);
         bool getStartFromEdges() const {return startFromEdges;};
 
+    protected:
+        void push(const ZoneTile& zoneTile) override;
+        void setZoneTile(const ZoneTile& zoneTile) override;
+        bool isEmpty(IntVector2 point) const override;
+        bool isValidPoint(IntVector2 point) const override;
     private:
 
         std::shared_ptr<const EdgeGraph<T, EdgeType>> graph;
@@ -59,14 +47,10 @@ class ZoneBloater : public Simulator{
         std::queue<std::shared_ptr<ZoneTile>> nextExpanders;
         int max_expanders = 0;
         int currentStepSize = 0;
-        //double diagonalChance = 0.4714045207;
-        double diagonalChance = 0.4;
-
-        BloatMode bloatMode = BloatMode::STRAIGHT;
-        using AlgoFunc = void (ZoneBloater::*)(std::shared_ptr<ZoneTile>);
-        AlgoFunc bloatStep = &ZoneBloater::straightVoronoiStep;
 
         bool startFromEdges = false;
+
+        std::unique_ptr<BloatStrategy> bloatStrategy;
 
     private:
         
@@ -96,14 +80,7 @@ void ZoneBloater<T, EdgeType>::onStart(){
     }
     for (const auto& [startingTileID, vector2] : startingPoints){
         auto [x, y] = vector2;
-        switch (bloatMode){
-            case BloatMode::RANDOM_TREE:
-                break;
-            case BloatMode::RANDOM_DIAGONAL:
-            case BloatMode::STRAIGHT:
-            default:
-                nextExpanders.push(std::make_shared<ZoneTile>(ZoneTile(x, y, startingTileID)));
-        }
+        nextExpanders.push(std::make_shared<ZoneTile>(ZoneTile(x, y, startingTileID)));
         grid->setTile(x, y, Identifiable::nullID);
     }
     if (startFromEdges)
@@ -119,7 +96,7 @@ void ZoneBloater<T, EdgeType>::onStep(){
     for (int i = 0; i < currentStepSize; i++){
         std::shared_ptr<ZoneTile> activeTile = nextExpanders.front();
         nextExpanders.pop();
-        (this->*bloatStep)(activeTile);
+        bloatStrategy->bloat(*activeTile);
     }
     if (nextExpanders.empty())
         finish();
@@ -149,77 +126,39 @@ template <typename T, typename EdgeType>
 }
 
 template <typename T, typename EdgeType>
-void ZoneBloater<T, EdgeType>::straightVoronoiStep(std::shared_ptr<ZoneTile> activeTile){
-    int x = activeTile->x;
-    int y = activeTile->y;
-    if (!grid->isEmpty(x, y)){
-        return;
-    }
-
-    grid->setTile(x, y, activeTile->zoneID);
-
-    IntVector2 tempPoint = {x - 1, y};
-    if (grid->isValidPoint(tempPoint))
-        nextExpanders.push(std::make_shared<ZoneTile>(ZoneTile(tempPoint, activeTile->zoneID)));
-
-    tempPoint = {x + 1, y};
-    if (grid->isValidPoint(tempPoint))
-        nextExpanders.push(std::make_shared<ZoneTile>(ZoneTile(tempPoint, activeTile->zoneID)));
-
-    tempPoint = {x, y - 1};
-    if (grid->isValidPoint(tempPoint))
-        nextExpanders.push(std::make_shared<ZoneTile>(ZoneTile(tempPoint, activeTile->zoneID)));
-
-    tempPoint = {x, y + 1};
-    if (grid->isValidPoint(tempPoint))
-        nextExpanders.push(std::make_shared<ZoneTile>(ZoneTile(tempPoint, activeTile->zoneID)));
-}
-
-template <typename T, typename EdgeType>
-void ZoneBloater<T, EdgeType>::diagonalRandomVoronoiStep(std::shared_ptr<ZoneTile> activeTile){
-    int x = activeTile->x;
-    int y = activeTile->y;
-    if (!grid->isEmpty(x, y)){
-        return;
-    }
-    straightVoronoiStep(activeTile);
-
-    IntVector2 tempPoint = {x - 1, y - 1};
-    if (grid->isValidPoint(tempPoint) && RandomGenerator::instance().chanceOccurred(diagonalChance))
-        nextExpanders.push(std::make_shared<ZoneTile>(ZoneTile(tempPoint, activeTile->zoneID)));
-
-    tempPoint = {x - 1, y + 1};
-    if (grid->isValidPoint(tempPoint) && RandomGenerator::instance().chanceOccurred(diagonalChance))
-        nextExpanders.push(std::make_shared<ZoneTile>(ZoneTile(tempPoint, activeTile->zoneID)));
-
-    tempPoint = {x + 1, y + 1};
-    if (grid->isValidPoint(tempPoint) && RandomGenerator::instance().chanceOccurred(diagonalChance))
-        nextExpanders.push(std::make_shared<ZoneTile>(ZoneTile(tempPoint, activeTile->zoneID)));
-
-    tempPoint = {x + 1, y - 1};
-    if (grid->isValidPoint(tempPoint) && RandomGenerator::instance().chanceOccurred(diagonalChance))
-        nextExpanders.push(std::make_shared<ZoneTile>(ZoneTile(tempPoint, activeTile->zoneID)));
-}
-
-template <typename T, typename EdgeType>
-void ZoneBloater<T, EdgeType>::setMode(BloatMode bloatMode){
+template <typename Strategy>
+requires std::is_base_of_v<BloatStrategy, std::decay_t<Strategy>>
+void ZoneBloater<T, EdgeType>::setBloatMode(Strategy&& bloatStrategy){
     if (!isInitialized())
         throw std::logic_error("The status is not INIT");
-    this->bloatMode = bloatMode;
-    switch (bloatMode){
-        case BloatMode::RANDOM_DIAGONAL:
-            bloatStep = this->diagonalRandomVoronoiStep;
-            break;
-        case BloatMode::STRAIGHT:
-        default:
-            bloatStep = this->straightVoronoiStep;
-            break;
-    }
+    this->bloatStrategy = std::make_unique<std::decay_t<Strategy>>(std::forward<Strategy>(bloatStrategy));
+    this->bloatStrategy->setZoneTilePusher(this->self());
 }
 
 template <typename T, typename EdgeType>
-void ZoneBloater<T, EdgeType>::setStartFromEdges(bool value){
+void ZoneBloater<T, EdgeType>::setStartFromEdges(bool value)
+{
     startFromEdges = value;
+}
+
+template <typename T, typename EdgeType>
+void ZoneBloater<T, EdgeType>::push(const ZoneTile& zoneTile){
+    nextExpanders.push(std::make_shared<ZoneTile>(zoneTile.x, zoneTile.y, zoneTile.zoneID));
+}
+
+template <typename T, typename EdgeType>
+void ZoneBloater<T, EdgeType>::setZoneTile(const ZoneTile &zoneTile){
+    grid->setTile(zoneTile.x, zoneTile.y, zoneTile.zoneID);
+}
+
+template <typename T, typename EdgeType>
+bool ZoneBloater<T, EdgeType>::isEmpty(IntVector2 point) const{
+    return grid->isEmpty(point);
+}
+
+template <typename T, typename EdgeType>
+bool ZoneBloater<T, EdgeType>::isValidPoint(IntVector2 point) const{
+    return grid->isValidPoint(point);
 }
 
 template <typename T, typename EdgeType>
