@@ -53,6 +53,45 @@ namespace templates{
                 {{4, 3, 0}, {0, 1, 2, 3}}
             }
         ));
+
+
+        static std::shared_ptr<const EdgeGraph<RadialNode>> habbanyaErgButterFly = std::make_shared<const EdgeGraph<RadialNode>>(
+        EdgeGraph<RadialNode>(std::vector<std::pair<RadialNode, std::vector<Identifiable>>>
+            {
+                {{1, 2, 0}, {4, 6}},
+                {{2, 2, 0}, {4, 5}},
+                {{3, 2, 0}, {5, 8}},
+                {{4, 2, 0}, {1, 2, 5, 6, 7, 9}},
+                {{5, 2, 0}, {2, 3, 4, 7, 8, 10}},
+                {{6, 2, 0}, {1, 4, 9, 11}},
+                {{7, 2, 0}, {4, 5, 9, 10}},
+                {{8, 2, 0}, {3, 5, 10, 13}},
+                {{9, 2, 0}, {4, 6, 7, 10, 11, 12}},
+                {{10, 2, 0}, {5, 7, 8, 9, 12, 13}},
+                {{11, 2, 0}, {6, 9}},
+                {{12, 2, 0}, {9, 10}},
+                {{13, 2, 0}, {8, 10}}
+            }
+        ));
+
+        static auto habbanyaErg = std::make_shared<const EdgeGraph<RadialNode>>(
+        EdgeGraph<RadialNode, Identifiable>(std::vector<std::pair<RadialNode, std::vector<Identifiable>>>
+        {
+            {{1, 1, 0}, {2, 4, 6}},
+            {{2, 1, 0}, {1, 3, 4, 5, 7}},
+            {{3, 1, 0}, {2, 5, 8}},
+            {{4, 1, 0}, {1, 2, 6, 7, 9}},
+            {{5, 1, 0}, {2, 3, 7, 8, 10}},
+            {{6, 1, 0}, {1, 4, 9, 11}},
+            {{7, 2, 0}, {2, 4, 5, 9, 10, 12}},
+            {{8, 1, 0}, {3, 5, 10, 13}},
+            {{9, 1, 0}, {4, 6, 7, 11, 12}},
+            {{10, 1, 0}, {5, 7, 8, 12, 13}},
+            {{11, 1, 0}, {6, 9, 12}},
+            {{12, 1, 0}, {7, 9, 10, 11, 13}},
+            {{13, 1, 0}, {8, 10, 12}}
+        }
+        ));
     }
 
 
