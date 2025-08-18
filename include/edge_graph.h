@@ -2,6 +2,7 @@
 
 #include "graph.h"
 #include <unordered_map>
+#include <stdexcept>
 
 #include <functional>
 
