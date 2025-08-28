@@ -62,11 +62,9 @@ void ZoneBloater<T, EdgeType>::initVoronoi(std::shared_ptr<const EdgeGraph<T, Ed
     this->graph = graph;
     grid = initialGrid;
     startingPoints.clear();
-    for (size_t y = 0; y < grid->getHeight(); y++){
-        for (size_t x = 0; x < grid->getWidth(); x++){
-            if (!grid->isEmpty(x, y)){
-                startingPoints[grid->getTileID(x, y)] = {static_cast<int>(x), static_cast<int>(y)};
-            }
+    for (auto it = grid->begin(); it != grid->end(); ++it){
+        if (*it != Identifiable::nullID){
+            startingPoints[*it] = {it.getX(), it.getY()};
         }
     }
     max_expanders = 4 * grid->getWidth() * grid->getHeight();
