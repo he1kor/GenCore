@@ -41,8 +41,8 @@ class Grid{
         void setTile(IntVector2 point, Identifiable value);
         Identifiable getTileID(int x, int y) const;
         const std::vector<Identifiable>& getTileIDs() const;
-        T getTile(int x, int y) const;
-        T getTile(Identifiable id) const;
+        const T& getTile(int x, int y) const;
+        const T& getTile(Identifiable id) const;
         int getWidth() const;
         int getHeight() const;
         
@@ -56,6 +56,25 @@ class Grid{
         std::optional<Identifiable>tryGetID(IntVector2 point2);
         std::optional<T>tryGetTile(IntVector2 point2);
 
+        class Iterator{
+            private:
+                const Grid& grid;
+                int y;
+                int x;
+            public:
+                int getX() const{return x;};
+                int getY() const{return y;};
+                void move(int x, int y){this->y += y; this->x += x;};
+                Iterator(const Grid& grid, int x, int y) : grid(grid), x(x), y(y){}
+                Identifiable operator*() const{return grid.getTileID(x, y);}
+                Iterator& operator++();
+                Iterator& operator--();
+                bool operator==(const Iterator& other) const;
+                bool operator!=(const Iterator& other) const{return !(*this == other);}
+        };
+        Iterator begin() { return Iterator(*this, 0, 0); }
+        Iterator end() { return Iterator(*this, 0, getHeight()); }
+
     private:
         int width = -1;
         int height = -1;
@@ -64,8 +83,32 @@ class Grid{
         std::vector<Identifiable> tileIDs;
 };
 
+template <typename T>
+Grid<T>::Iterator& Grid<T>::Iterator::operator++(){
+    x++;
+    if (x >= grid.getWidth()){
+        x = 0;
+        y++;
+    }
+    return *this;
+}
+template <typename T>
+Grid<T>::Iterator& Grid<T>::Iterator::operator--(){
+    x--;
+    if (x < 0){
+        x = grid.getWidth()-1;
+        y--;
+    }
+    return *this;
+}
 
-
+template <typename T>
+bool Grid<T>::Iterator::operator==(const Iterator &other) const{
+    return 
+        this->grid.matrix.data() == other.grid.matrix.data() &&
+        this->x == other.x &&
+        this->y == other.y;
+}
 
 template <typename T> 
 Grid<T>::Grid(int width, int height) : width(width), height(height){
@@ -98,7 +141,8 @@ Grid<T>::Grid(const std::vector<std::vector<T>>& matrix){
 }
 
 template <typename T>
-void Grid<T>::checkTilesetValidness(Identifiable id) const{
+void Grid<T>::checkTilesetValidness(Identifiable id) const
+{
     if (!tileset.count(id)){
         if (id == Identifiable::nullID)
             throw NoTileException("The provided ID is nullID\n");
@@ -129,13 +173,13 @@ const std::vector<Identifiable>& Grid<T>::getTileIDs() const{
 }
 
 template <typename T>
-T Grid<T>::getTile(int x, int y) const{
+const T& Grid<T>::getTile(int x, int y) const{
     Identifiable id = getTileID(x, y);
     return getTile(id);
 }
 
 template <typename T>
-T Grid<T>::getTile(Identifiable id) const{
+const T& Grid<T>::getTile(Identifiable id) const{
     checkTilesetValidness(id);
     return tileset.at(id);
 }
