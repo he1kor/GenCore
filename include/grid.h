@@ -59,15 +59,15 @@ class Grid{
 
         class Iterator{
             private:
-                const Grid& grid;
+                Grid& grid;
                 int y;
                 int x;
             public:
                 int getX() const{return x;};
                 int getY() const{return y;};
                 void move(int x, int y){this->y += y; this->x += x;};
-                Iterator(const Grid& grid, int x, int y) : grid(grid), x(x), y(y){}
-                Identifiable operator*() const{return grid.getTileID(x, y);}
+                Iterator(Grid& grid, int x, int y) : grid(grid), x(x), y(y){}
+                Identifiable& operator*(){return grid.matrix[y][x];}
                 Iterator& operator++();
                 Iterator& operator--();
                 bool operator==(const Iterator& other) const;
