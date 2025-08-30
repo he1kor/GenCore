@@ -16,6 +16,8 @@
 #include "plane.h"
 #include "grid.h"
 
+#include "random_generator.h"
+
 struct IdentifiedMagnet : public Identifiable, public Magnet{
     public:
         IdentifiedMagnet(double force) : Identifiable(id), Magnet(force){id++;};
@@ -79,22 +81,19 @@ class EmbeddablePlane : public Plane<T>{
         const double magnetForceIterationMax = 120;
 };
 
-#include <random>
 
 template<typename T> void EmbeddablePlane<T>::initEmbed(std::shared_ptr<const Graph<T>> graph){
     this->currentGraph = graph;
     calculateZoneRadius();
     this->clear();
     
-    std::random_device rd;
-    std::mt19937 rng(rd());
-    std::uniform_real_distribution<double> distWidth(0, EmbeddablePlane<T>::getWidth());
-    std::uniform_real_distribution<double> distHeight(0, EmbeddablePlane<T>::getHeight());
     
     int attempts = 0;
     for (int i = 0; i < graph->size(); ++i) {
         Identifiable id1 = graph->getIDs()[i];
-        auto spot = Spot<T>(distWidth(rng), distHeight(rng), graph->getValue(id1));
+        double width = RandomGenerator::instance().doubleRange(0, EmbeddablePlane<T>::getWidth());
+        double height = RandomGenerator::instance().doubleRange(0, EmbeddablePlane<T>::getHeight());
+        auto spot = Spot<T>(width, height, graph->getValue(id1));
         this->insertSpot(spot);
         // Ensure no two points are too close initially
         for (int j = 0; j < i; ++j) {
