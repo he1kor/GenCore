@@ -6,7 +6,7 @@ class Identifiable{
     protected:
         int id = nullID;
     public:
-        static const int nullID = -1;
+        static inline const int nullID = -1;
         Identifiable(int id);
         Identifiable() = default;
         virtual ~Identifiable() = default;
