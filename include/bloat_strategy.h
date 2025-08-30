@@ -3,6 +3,7 @@
 #include <functional>
 #include <queue>
 #include <memory>
+#include <optional>
 
 #include "2d.h"
 #include "edge_graph.h"
@@ -28,6 +29,7 @@ public:
 
     virtual void setZoneTile(const ZoneTile& zoneTile) = 0;
     virtual bool isEmpty(IntVector2 point) const = 0;
+    virtual std::optional<Identifiable> tryGetID(IntVector2 point) const = 0;
     virtual bool isValidPoint(IntVector2 point) const = 0;
 };
 
@@ -54,61 +56,76 @@ protected:
 
 namespace bloatStrategies{
         
-    class StraightBloatStrategy : public BloatStrategy{
+    class StraightBloat : public BloatStrategy{
     public:
-        StraightBloatStrategy(SelfPointer<ZoneTilePusher> zoneTilePusher) : BloatStrategy(zoneTilePusher){};
-        StraightBloatStrategy() : BloatStrategy(){};
+        StraightBloat(SelfPointer<ZoneTilePusher> zoneTilePusher) : BloatStrategy(zoneTilePusher){};
+        StraightBloat() : BloatStrategy(){};
 
         
     
         void bloat(const ZoneTile &activeTile) override;
     };
 
+    class ChebyshevBloat : public BloatStrategy{
+    public:
+        ChebyshevBloat(SelfPointer<ZoneTilePusher> zoneTilePusher) : BloatStrategy(zoneTilePusher){};
+        ChebyshevBloat() : BloatStrategy(){};
 
-    class DiagonalRandomBloatStrategy : public BloatStrategy{
+        void bloat(const ZoneTile &activeTile) override;
+    };
+
+    class DiagonalRandomBloat : public BloatStrategy{
     public:
         const double diagonalChance;
 
-        DiagonalRandomBloatStrategy() :
+        DiagonalRandomBloat() :
             BloatStrategy(),
             diagonalChance{0.4}{};
-        DiagonalRandomBloatStrategy(double diagonalChance) :
+        DiagonalRandomBloat(double diagonalChance) :
             BloatStrategy(),
             diagonalChance{diagonalChance}{};
 
-        DiagonalRandomBloatStrategy(SelfPointer<ZoneTilePusher> zoneTilePusher) :
+        DiagonalRandomBloat(SelfPointer<ZoneTilePusher> zoneTilePusher) :
             BloatStrategy(zoneTilePusher),
             diagonalChance{0.4}{};
-        DiagonalRandomBloatStrategy(SelfPointer<ZoneTilePusher> zoneTilePusher, double diagonalChance) :
+        DiagonalRandomBloat(SelfPointer<ZoneTilePusher> zoneTilePusher, double diagonalChance) :
             BloatStrategy(zoneTilePusher),
             diagonalChance{diagonalChance}{};
 
         void bloat(const ZoneTile& activeTile) override;
     };
 
-    class RandomBloatStrategy : public BloatStrategy{
+    class RandomBloat : public BloatStrategy{
     public:
         const double randomChance;
 
-        RandomBloatStrategy(const RandomBloatStrategy&) = delete;
-        RandomBloatStrategy& operator=(const RandomBloatStrategy&) = delete;
+        RandomBloat(const RandomBloat&) = delete;
+        RandomBloat& operator=(const RandomBloat&) = delete;
     
-        RandomBloatStrategy(RandomBloatStrategy&&) = default;
-        RandomBloatStrategy& operator=(RandomBloatStrategy&&) = default;
+        RandomBloat(RandomBloat&&) = default;
+        RandomBloat& operator=(RandomBloat&&) = default;
 
-        RandomBloatStrategy(double diagonalChance) :
+        RandomBloat(double diagonalChance) :
             BloatStrategy(),
             randomChance{randomChance}{};
-        RandomBloatStrategy() :
+        RandomBloat() :
             BloatStrategy(),
             randomChance{0.5}{};
-        RandomBloatStrategy(SelfPointer<ZoneTilePusher> ZoneTilePusher) :
+        RandomBloat(SelfPointer<ZoneTilePusher> ZoneTilePusher) :
             BloatStrategy(zoneTilePusher),
             randomChance{0.5}{};
-        RandomBloatStrategy(SelfPointer<ZoneTilePusher> zoneTilePusher, double diagonalChance) :
+        RandomBloat(SelfPointer<ZoneTilePusher> zoneTilePusher, double diagonalChance) :
             BloatStrategy(zoneTilePusher),
             randomChance{randomChance}{};
 
         void bloat(const ZoneTile& activeTile) override;
+    };
+
+    class AdjacentCornerFill : public BloatStrategy{
+    public:
+        AdjacentCornerFill(SelfPointer<ZoneTilePusher> zoneTilePusher) : BloatStrategy(zoneTilePusher){};
+        AdjacentCornerFill() : BloatStrategy(){};
+
+        void bloat(const ZoneTile &activeTile) override;
     };
 }
