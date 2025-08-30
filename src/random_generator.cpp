@@ -21,6 +21,10 @@ bool RandomGenerator::chanceOccurred(double probability){
     return dist(generator) < probability;
 }
 
+double RandomGenerator::doubleRange(double min, double max){
+    return std::uniform_real_distribution<double>(min, max)(generator);
+}
+
 void RandomGenerator::setSeed(unsigned int seed){
     generator.seed(seed);
     this->seed = seed;

@@ -8,6 +8,7 @@ class RandomGenerator{
         RandomGenerator& operator=(const RandomGenerator&) = delete;
         static RandomGenerator& instance();
         bool chanceOccurred(double probability);
+        double doubleRange(double min, double max);
         void setSeed(unsigned int seed);
         void reset();
         unsigned int getSeed() const;
