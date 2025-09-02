@@ -307,7 +307,7 @@ void EmbeddablePlane<T>::applyMagnetForces(double temperature){
         return;
     for (const Magnet& magnet : magnets){
         for (Identifiable id : this->getIDs()) {
-            if (this->getValue(id).getSuspectibility() == 0)
+            if (this->getValue(id).getSusceptibility() == 0)
                 continue;
             DoubleVector2 force = magnet.calculateForce<T>(this->getSpot(id).getCoords(), this->getValue(id)) * temperature;
             temp_spots[id].changeX(force.x); 

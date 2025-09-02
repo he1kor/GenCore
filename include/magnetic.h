@@ -5,8 +5,8 @@ class Magnetic{
     public:
         Magnetic();
         constexpr Magnetic(double val) : susceptibility(val){}
-        void setSuspectibility(double val);
-        double getSuspectibility() const;
+        void setSusceptibility(double val);
+        double getSusceptibility() const;
         bool isAttractive() const;
         bool isRepulsive() const;
         bool isNotMagnetic() const;

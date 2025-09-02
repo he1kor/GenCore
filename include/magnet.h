@@ -51,5 +51,5 @@ class Magnet : public SafeDoubleVector2{
 
 template <IsMagneticPoint MagneticPointT>
 DoubleVector2 Magnet::calculateForce(const DoubleVector2& object, const MagneticPointT& magnetic) const{
-    return calculateForce(static_cast<DoubleVector2>(object), magnetic.getSuspectibility());
+    return calculateForce(static_cast<DoubleVector2>(object), magnetic.getSusceptibility());
 }

@@ -9,7 +9,7 @@
 class BasicNode : public Magnetic, public Identifiable{
     public:
         BasicNode() : Magnetic{0}, Identifiable{Identifiable::nullID}{};
-        BasicNode(int id, double suspectibility) : Magnetic{suspectibility}, Identifiable{id}{};
+        BasicNode(int id, double susceptibility) : Magnetic{susceptibility}, Identifiable{id}{};
     private:
 
 };
@@ -17,7 +17,7 @@ class BasicNode : public Magnetic, public Identifiable{
 class RadialNode : public Magnetic, public Radial, public Identifiable{
     public:
         RadialNode() : Magnetic{0}, Radial{1.0}, Identifiable{Identifiable::nullID}{};
-        RadialNode(int id, double radius, double suspectibility) : Magnetic{suspectibility}, Radial{radius}, Identifiable{id}{};
+        RadialNode(int id, double radius, double susceptibility) : Magnetic{susceptibility}, Radial{radius}, Identifiable{id}{};
     private:
 
 };
