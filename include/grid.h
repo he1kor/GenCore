@@ -41,6 +41,7 @@ class Grid{
         void setTile(IntVector2 point, Identifiable value);
         void setTile(typename Grid<T>::Iterator it, Identifiable value);
         Identifiable getTileID(int x, int y) const;
+        Identifiable getTileID(IntVector2 point) const;
         const std::vector<Identifiable>& getTileIDs() const;
         const T& getTile(int x, int y) const;
         const T& getTile(Identifiable id) const;
@@ -169,6 +170,11 @@ template <typename T> void Grid<T>::setTile(Grid<T>::Iterator it, Identifiable v
 template <typename T>
 Identifiable Grid<T>::getTileID(int x, int y) const{
     return matrix.at(y).at(x);
+}
+
+template <typename T>
+Identifiable Grid<T>::getTileID(IntVector2 point) const{
+    return getTileID(point.x, point.y);
 }
 
 template <typename T>
