@@ -3,6 +3,8 @@
 #include <optional>
 #include "2d.h"
 
+#include <stdexcept>
+
 template <typename T>
 class Matrix{
     public:
