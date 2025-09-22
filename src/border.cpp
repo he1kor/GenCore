@@ -3,6 +3,9 @@
 #include <stdexcept>
 #include <format>
 
+#include "random_generator.h"
+#include <iomanip>
+
 using namespace tiles;
 
 Border::Edge::Edge(IntVector2 aTile, IntVector2 bTile){
@@ -79,15 +82,12 @@ Border::Segment::Segment(IntVector2 aTile, IntVector2 bTile){
 }
 
 tiles::Border::Segment::Segment(const Edge &edge){
-    IntVector2 pos = edge.getTopLeftTile();
     if (edge.orientation == Orientation::horizontal){
-        pos.x++;
         direction = Direction::down;
     } else{
-        pos.y++;
         direction = Direction::right;
     }
-    startPos = pos;
+    startPos = edge.getbottomRightTile();
 }
 
 void Border::Segment::turnLeft(){
@@ -185,8 +185,19 @@ std::array<Border::Segment, 3> Border::Segment::getNext() const{
 std::array<Border::Segment, 3> Border::Segment::getPrev() const{
     std::array<Border::Segment, 3> result;
     result.fill(*this);
+
     result[0].turnLeft();
+    result[0].moveForward();
+
     result[2].turnRight();
+    result[2].moveForward();
+    
+    result[1].turnBackward();
+    result[1].moveForward();
+
+    result[0].turnBackward();
+    result[1].turnBackward();
+    result[2].turnBackward();
     return result;
 }
 
@@ -199,8 +210,8 @@ void Border::Segment::setDirection(Direction direction){
 }
 
 size_t tiles::Border::manhattanFromTo(size_t i1, size_t i2) const{
-    int xDif = segments.at(i2).getNextPos().x - segments.at(i2).getStartPos().x;
-    int yDif = segments.at(i2).getNextPos().y - segments.at(i2).getStartPos().y;
+    int xDif = segments.at(i1).getNextPos().x - segments.at(i2).getStartPos().x;
+    int yDif = segments.at(i1).getNextPos().y - segments.at(i2).getStartPos().y;
     return std::abs(xDif) + std::abs(yDif);
 }
 
@@ -223,30 +234,125 @@ IntVector2 Border::Segment::getNextPos() const{
     return startPos + move;
 }
 
-void tiles::Border::initPassData(size_t minPassWidth, size_t maxPassWidth){
-    this->minPassWidth = minPassWidth;
-    this->maxPassWidth = maxPassWidth;
+void tiles::Border::initPassData(PassParams params){
+    this->params = params;
 
-    if (maxPassWidth < minPassWidth){
-        throw std::invalid_argument(std::format("maxPassWidth ({}) is greater than minPassWidth ({})", maxPassWidth, minPassWidth));
+    if (params.maxPassWidth < params.minPassWidth){
+        throw std::invalid_argument(std::format("maxPassWidth ({}) is greater than minPassWidth ({})", params.maxPassWidth, params.minPassWidth));
     }
-    size_t numberPasses = maxPassWidth - minPassWidth + 1;
+    size_t numberPasses = params.maxPassWidth - params.minPassWidth + 1;
+
+    nextPassIndex.assign(segments.size(), std::vector<std::optional<size_t>>());
 
     std::vector<size_t> currentFurthestIndex(numberPasses, 0);
     for (size_t i = 0; i < segments.size(); i++){
         nextPassIndex[i] = std::vector<std::optional<size_t>>(numberPasses, std::nullopt);
-        if (i == 0 || i == segments.size() - 1){
+        if (i == segments.size() - 1){
             continue;
         }
         for (size_t j = i+1; j < segments.size() - 1; j++){
             size_t distance = manhattanFromTo(i, j);
-            size_t widthIndex = distance - minPassWidth;
-            if (distance <= maxPassWidth && distance >= minPassWidth && j > currentFurthestIndex[widthIndex]){
+            if (distance < params.minPassWidth || distance > params.maxPassWidth) continue;
+            size_t widthIndex = distance - params.minPassWidth;
+            if (distance <= params.maxPassWidth && distance >= params.minPassWidth && j > currentFurthestIndex[widthIndex]){
                 nextPassIndex[i][widthIndex] = j;
                 currentFurthestIndex[widthIndex] = j;
             }
         }
     }
+    initCombinations();
+}
+
+void tiles::Border::initCombinations(){
+    const size_t size = segments.size();
+    size_t numberPasses = params.maxPassWidth - params.minPassWidth + 1;
+    wallStartingCombs.assign(size, 0);
+    passStartingCombs.assign(size, 0);
+
+    size_t n = std::min(size, params.minWallLength);
+    std::fill(wallStartingCombs.end() - n, wallStartingCombs.end(), 1);
+    passStartingCombs.back() = 1;
+
+    for (size_t i = size - 1; i < size; i--){
+        for (size_t wall_r = i == 0 ? 0 : i+params.minWallLength; wall_r < size && wall_r <= i+params.maxWallLength; wall_r++){
+            wallStartingCombs[i] += passStartingCombs[wall_r];
+        }
+        for (auto pass_i = 0; pass_i < numberPasses; pass_i++){
+            if (!nextPassIndex[i][pass_i]) continue;
+            passStartingCombs[i] += wallStartingCombs[*nextPassIndex[i][pass_i]];
+        }
+    }
+}
+
+void tiles::Border::logNextPassIndex() {
+    std::clog << "nextPassIndex (by columns):\n";
+    
+    if (nextPassIndex.empty() || nextPassIndex[0].empty()) {
+        std::clog << "[Empty]\n" << std::endl;
+        return;
+    }
+    
+    size_t rows = nextPassIndex.size();
+    size_t cols = nextPassIndex[0].size();
+    
+    for (size_t j = 0; j < cols; ++j) {
+        std::clog << "[";
+        
+        for (size_t i = 0; i < rows; ++i) {
+            if (nextPassIndex[i][j].has_value()) {
+                std::clog << std::setw(3) << nextPassIndex[i][j].value();
+            } else {
+                std::clog << std::setw(3) << "---";
+            }
+            
+            if (i < rows - 1) {
+                std::clog << " ";
+            }
+        }
+        
+        std::clog << "]\n";
+    }
+    
+    std::clog << std::endl;
+}
+
+void tiles::Border::logStartingCombs() {
+    std::clog << "Wall Starting Combinations:\n";
+    
+    if (wallStartingCombs.empty()) {
+        std::clog << "[Empty]\n";
+    } else {
+        std::clog << "[";
+        for (size_t i = 0; i < wallStartingCombs.size(); ++i) {
+            std::clog << std::setw(3) << wallStartingCombs[i];
+            if (i < wallStartingCombs.size() - 1) {
+                std::clog << " ";
+            }
+        }
+        std::clog << "]\n";
+    }
+    
+    std::clog << "\nPass Starting Combinations:\n";
+    
+    if (passStartingCombs.empty()) {
+        std::clog << "[Empty]\n";
+    } else {
+        std::clog << "[";
+        for (size_t i = 0; i < passStartingCombs.size(); ++i) {
+            std::clog << std::setw(3) << passStartingCombs[i];
+            if (i < passStartingCombs.size() - 1) {
+                std::clog << " ";
+            }
+        }
+        std::clog << "]\n";
+    }
+    
+    std::clog << std::endl;
+}
+
+void tiles::Border::logPassData(){
+    logStartingCombs();
+    logNextPassIndex();
 }
 
 const Border::Segment &Border::at(size_t i) const{
@@ -255,12 +361,70 @@ const Border::Segment &Border::at(size_t i) const{
 
 std::vector<Border::PossiblePass> tiles::Border::possiblePasses(size_t index) const{
     std::vector<Border::PossiblePass> result;
-    for (size_t i = 0; i <= maxPassWidth - minPassWidth; i++){
+    for (size_t i = 0; i <= params.maxPassWidth - params.minPassWidth; i++){
         if (const std::optional<size_t>& j = nextPassIndex.at(index)[i]){
-            result.emplace_back(index, *j, i+minPassWidth);
+            result.emplace_back(index, *j, i+params.minPassWidth);
         }
     }
     return result;
+}
+
+Border::PossiblePass tiles::Border::generatePass(size_t i){
+    std::vector<uint64_t> widthWeights;
+    for (size_t j = 0; j <= params.maxPassWidth - params.minPassWidth; j++){
+        if (const std::optional<size_t>& optionalNextEnd = nextPassIndex.at(i)[j]){
+            widthWeights.push_back(wallStartingCombs[*optionalNextEnd]);
+        } else{
+            widthWeights.push_back(0);
+        }
+    }
+    size_t chosenWidth_i = RandomGenerator::instance().takenIndex(widthWeights);
+    
+    PossiblePass result{
+        .firstIndex = i,
+        .secondIndex = *nextPassIndex[i].at(chosenWidth_i),
+        .width = i + params.minPassWidth
+    };
+    
+    for (size_t j = result.firstIndex; j < result.secondIndex; j++){
+        disable(j);
+    }
+
+    return result;
+}
+
+size_t tiles::Border::generateWall(size_t i){
+    std::vector<uint64_t> lengthWeights;
+    for (size_t right_i = i == 0 ? 0 : i + params.minWallLength; right_i < segments.size() && right_i <= i + params.maxWallLength; right_i++){
+        if (passStartingCombs.at(right_i) == 0) continue;
+        lengthWeights.push_back(passStartingCombs.at(right_i));
+    }
+    if (i == 0) return i + RandomGenerator::instance().takenIndex(lengthWeights);
+    return i + params.minWallLength + RandomGenerator::instance().takenIndex(lengthWeights);
+}
+
+void tiles::Border::generatePasses(){
+    size_t i = 0;
+    size_t size = segments.size();
+
+    bool isWallTurn = RandomGenerator::instance().takenIndex({wallStartingCombs[0], passStartingCombs[0]}) == 0;
+
+    while (i < size - 1){
+        if (isWallTurn){
+            while (i < size - 1 && wallStartingCombs[i] == 0){
+                i++;
+            }
+            if (i >= size - 1) break;
+            i = generateWall(i);
+        } else {
+            while (i < size - 1 && passStartingCombs[i] == 0){
+                i++;
+            }
+            if (i >= size - 1) break;
+            i = generatePass(i).secondIndex;
+        }
+        isWallTurn = !isWallTurn;
+    }
 }
 
 IntVector2 tiles::Border::getLeft(size_t i){

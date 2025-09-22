@@ -6,10 +6,20 @@
 #include <unordered_set>
 #include <unordered_map>
 
+#include <stdint.h>
+
 #include "2d.h"
 #include "grid.h"
 
 namespace tiles{
+
+    struct PassParams{
+        size_t minPassWidth = 0;
+        size_t maxPassWidth = 100;
+        size_t minWallLength = 0;
+        size_t maxWallLength = 100;
+    };
+
     class Border{
     public:
         class Segment;
@@ -40,6 +50,8 @@ namespace tiles{
             void turnBackward();
             IntVector2 getLeftPos() const;
             IntVector2 getRightPos() const;
+            bool isDisabled() const{return disabled;};
+            void disable(){disabled = true;}
 
             void moveForward();
             bool fits(Edge& edge) const;
@@ -58,6 +70,7 @@ namespace tiles{
         private:
             IntVector2 startPos;
             Direction direction;
+            bool disabled = false;
         };
 
         struct PossiblePass{
@@ -74,45 +87,53 @@ namespace tiles{
         template <typename T>
         static std::unordered_map<std::pair<Identifiable, Identifiable>, std::vector<Border>, PairIDHash> getAllBorders(const Grid<T>& matrix);
 
-        void initPassData(size_t minPassWidth, size_t maxPassWidth);
-
+        void initPassData(PassParams params);
+        
         const Segment& at(size_t i) const;
         const std::vector<Segment>& getSegments() const{return segments;};
         std::vector<Border::PossiblePass> possiblePasses(size_t index) const;
+        PossiblePass generatePass(size_t i);
+        size_t generateWall(size_t i);
+        void generatePasses();
         size_t size() const{return segments.size();};
         IntVector2 getLeft(size_t i);
         IntVector2 getRight(size_t i);
-    private:
+        PassParams params;
 
+    private:
+        
         template <typename T>
         Border(std::unordered_set<tiles::Border::Edge, tiles::Border::Edge::Hash>& freeBorderEdges, std::unordered_set<tiles::Border::Edge, tiles::Border::Edge::Hash>::iterator it, const Grid<T>& matrix);
-
+        
         template <typename T>
         static std::pair<Identifiable, Identifiable> getNeighbours(const Edge& edge, const Grid<T>& matrix);
-
+        
         template <typename T>
         static std::pair<Identifiable, Identifiable> getNeighbours(const Border::Segment &segment, const Grid<T> &grid);
-
-        std::vector<Segment> segments;
         
-        size_t minPassWidth = 0;
-        size_t maxPassWidth = 0;
-        size_t minWallLength = 0;
-        size_t maxWallLength = 0;
+        void disable(size_t i){segments.at(i).disable();};
+        
+        std::vector<Segment> segments;
         std::vector<std::vector<std::optional<size_t>>> nextPassIndex;
         // nextPassIndex[i][x] means furthest possible index j for index i to make pass between (i, j) of manhattan distance (pass width) x+minPassWidth.
         // i.e. nextPassIndex[i][0] is the furthest j which makes pass (i, j) of width minPassWidth.
-
+        
         //dynamic programming calculations for pure random
-        std::vector<size_t> wallStartingCombs;
-        std::vector<size_t> passStartingCombs;
+        void initCombinations();
+        std::vector<uint64_t> wallStartingCombs;
+        std::vector<uint64_t> passStartingCombs;
         size_t getAnyStartingCombs(size_t i) const{return wallStartingCombs.at(i) + passStartingCombs.at(i);};
+
+        void logNextPassIndex();
+        void logStartingCombs();
+        void logPassData();
     };
 
     template <typename T>
     std::unordered_map<std::pair<Identifiable, Identifiable>, std::vector<Border>, PairIDHash> Border::getAllBorders(const Grid<T>& grid){
         std::unordered_map<std::pair<Identifiable, Identifiable>, std::vector<Border>, PairIDHash> result;
         std::unordered_set<Border::Edge, Border::Edge::Hash> freeBorderSegments;
+        
 
         for (size_t r = 0; r < grid.getHeight() - 1; r++){
             for (size_t c = 0; c < grid.getWidth(); c++){
@@ -137,8 +158,8 @@ namespace tiles{
 
     template <typename T>
     Border::Border(std::unordered_set<tiles::Border::Edge, Edge::Hash>& freeBorderEdges, std::unordered_set<tiles::Border::Edge, Edge::Hash>::iterator it, const Grid<T>& grid){
-        freeBorderEdges.erase(it);
         Border::Segment middleSegment(*it);
+        freeBorderEdges.erase(it);
         std::pair<Identifiable, Identifiable> neighbours = getNeighbours(middleSegment, grid);
         Border::Segment currentSegment = middleSegment;
         bool hasNext = true;
@@ -183,7 +204,6 @@ namespace tiles{
                 break;
             }
         }
-        nextPassIndex = std::vector<std::vector<std::optional<size_t>>>(segments.size());
     }
 
     template <typename T>
