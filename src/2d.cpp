@@ -92,3 +92,21 @@ std::ostream& operator<<(std::ostream &os, const IntVector2 &vec){
     os << "(" << vec.x << ", " << vec.y << ")";
     return os;
 }
+
+std::ostream &operator<<(std::ostream &os, tiles::Direction direction){
+    switch (direction){
+        case tiles::Direction::down:
+            os << "Direction::down";
+            break;
+        case tiles::Direction::left:
+            os << "Direction::left";
+            break;
+        case tiles::Direction::right:
+            os << "Direction::right";
+            break;
+        case tiles::Direction::up:
+            os << "Direction::up";
+            break;
+    }
+    return os;
+}

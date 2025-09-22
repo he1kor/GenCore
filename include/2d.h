@@ -48,3 +48,4 @@ struct IntVector2 {
 };
 
 std::ostream& operator<<(std::ostream& os, const IntVector2& vec);
+std::ostream& operator<<(std::ostream& os, tiles::Direction direction);
