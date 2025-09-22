@@ -1,6 +1,7 @@
 #include "random_generator.h"
 
 #include <stdexcept>
+#include <numeric>
 
 RandomGenerator::RandomGenerator(){
     generateSeed();
@@ -21,8 +22,28 @@ bool RandomGenerator::chanceOccurred(double probability){
     return dist(generator) < probability;
 }
 
+size_t RandomGenerator::takenIndex(const std::vector<uint64_t>& weightedItems){
+    uint64_t upper = std::accumulate(weightedItems.begin(), weightedItems.end(), 0);
+    uint64_t sum = 0;
+    uint64_t random = uint64Range(0, upper-1);
+    for (size_t i = 0; i < weightedItems.size(); i++){
+        sum += weightedItems[i];
+        if (random < sum)
+            return i;
+    }
+    return weightedItems.size()-1;
+}
+
+size_t RandomGenerator::takenIndex(const std::vector<uint64_t> &&weightedItems){
+    return takenIndex(static_cast<const std::vector<uint64_t>&>(weightedItems));;
+}
+
 double RandomGenerator::doubleRange(double min, double max){
     return std::uniform_real_distribution<double>(min, max)(generator);
+}
+
+uint64_t RandomGenerator::uint64Range(uint64_t min, uint64_t max){
+    return std::uniform_int_distribution<uint64_t>(min, max)(generator);
 }
 
 void RandomGenerator::setSeed(unsigned int seed){
