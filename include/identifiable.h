@@ -1,6 +1,7 @@
 #pragma once
 #include <functional>
 
+#include <iostream>
 
 class Identifiable{
     protected:
@@ -19,6 +20,9 @@ class Identifiable{
         
         bool operator!=(const Identifiable& other) const;
 };
+
+
+std::ostream& operator<<(std::ostream& os, const Identifiable& id);
 
 struct IDHash{
     std::size_t operator()(const Identifiable& e) const {
