@@ -18,6 +18,10 @@ Zone bloat:
 
 ![demo 2](https://github.com/user-attachments/assets/09b12063-5f3b-4624-9d1b-5494754b1af5)
 
+## Borders and passages generation
+![demo 3](https://github.com/user-attachments/assets/502451ad-8c0d-492b-a178-14d4f4656873)
+
+
 ## Quick Example:
 
 ```cpp
