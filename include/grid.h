@@ -29,6 +29,7 @@ template<typename T>
 class Grid{
     static_assert(std::is_base_of_v<Identifiable, T>, "T must inherit from Identifiable");
     public:
+        class Iterator;
         Grid(int width, int height);
         Grid(const std::vector<std::vector<T>>& matrix);
 
@@ -163,7 +164,7 @@ void Grid<T>::setTile(IntVector2 point, Identifiable value){
     matrix.at(point.y).at(point.x) = value;
 }
 
-template <typename T> void Grid<T>::setTile(Grid<T>::Iterator it, Identifiable value){
+template <typename T> void Grid<T>::setTile(typename Grid<T>::Iterator it, Identifiable value){
     this->setTile(it.getX(), it.getY(), value);
 }
 
