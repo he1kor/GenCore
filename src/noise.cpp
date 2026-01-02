@@ -32,10 +32,10 @@ Matrix<double> EllipticalBlobNoise::generate() {
         double sin_a = std::sin(angle);
         
         double max_radius = std::max(rx, ry) * 1.5;
-        int min_i = std::max(0, static_cast<int>(cy - max_radius));
-        int max_i = std::min(getHeight(), static_cast<int>(cy + max_radius) + 1);
-        int min_j = std::max(0, static_cast<int>(cx - max_radius));
-        int max_j = std::min(getWidth(), static_cast<int>(cx + max_radius) + 1);
+        int min_i = std::max(0, static_cast<int>(cy - max_radius - 1));
+        int max_i = std::min(getHeight(), static_cast<int>(cy + max_radius + 1) + 1);
+        int min_j = std::max(0, static_cast<int>(cx - max_radius - 1));
+        int max_j = std::min(getWidth(), static_cast<int>(cx + max_radius + 1) + 1);
         
         for (int i = min_i; i < max_i; ++i) {
             for (int j = min_j; j < max_j; ++j) {
