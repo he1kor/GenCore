@@ -79,6 +79,10 @@ class Matrix{
             const WeightContainerType& weights
         );
 
+        template <typename Predicate>
+        requires std::predicate<Predicate, T>
+        static Matrix<bool> mapToBinary(const Matrix<T>& matrix, Predicate predicate);
+
     
     template<typename U = T>
     requires Sortable<U> && HasHash<U>
@@ -300,6 +304,24 @@ inline Matrix<double> Matrix<T>::normalizedAverage(
 ){
     Matrix<double> result = average(matrices, weights);
     result.normalizeToPercentiles();
+    return result;
+}
+
+template <typename T>
+template <typename Predicate>
+requires std::predicate<Predicate, T>
+inline Matrix<bool> Matrix<T>::mapToBinary(const Matrix<T> &matrix, Predicate predicate){
+    int width = matrix.getWidth();
+    int height = matrix.getHeight();
+    Matrix<bool> result(width, height);
+    
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            T value = matrix.get(x, y);
+            result.set(x, y, predicate(value));
+        }
+    }
+    
     return result;
 }
 
