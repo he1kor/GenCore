@@ -69,12 +69,12 @@ class Matrix{
 
         template <typename Container>
         requires MatrixContainer<Container, T>
-        static Matrix<T> normalizedAverage(Container& container);
+        static Matrix<double> normalizedAverage(Container& container);
 
         template <typename MatrixContainerType, typename WeightContainerType>
         requires MatrixContainer<MatrixContainerType, T> &&
                 NumericContainer<WeightContainerType>
-        static Matrix<T> normalizedAverage(
+        static Matrix<double> normalizedAverage(
             const MatrixContainerType& matrices,
             const WeightContainerType& weights
         );
@@ -294,11 +294,11 @@ template <typename T>
 template <typename MatrixContainerType, typename WeightContainerType>
 requires MatrixContainer<MatrixContainerType, T> &&
         NumericContainer<WeightContainerType>
-inline Matrix<T> Matrix<T>::normalizedAverage(
+inline Matrix<double> Matrix<T>::normalizedAverage(
     const MatrixContainerType& matrices,
     const WeightContainerType& weights
 ){
-    Matrix<T> result = average(matrices, weights);
+    Matrix<double> result = average(matrices, weights);
     result.normalizeToPercentiles();
     return result;
 }
@@ -306,8 +306,8 @@ inline Matrix<T> Matrix<T>::normalizedAverage(
 template <typename T>
 template <typename Container>
 requires MatrixContainer<Container, T>
-inline Matrix<T> Matrix<T>::normalizedAverage(Container &matrices){
-    Matrix<T> result = average(matrices);
+inline Matrix<double> Matrix<T>::normalizedAverage(Container &matrices){
+    Matrix<double> result = average(matrices);
     result.normalizeToPercentiles();
     return result;
 }
