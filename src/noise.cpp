@@ -1,6 +1,7 @@
 #include "noise.h"
 #include "random_generator.h"
 #include <cmath>
+#include <numbers>
 
 
 Matrix<double> EllipticalBlobNoise::generate() {
@@ -26,7 +27,7 @@ Matrix<double> EllipticalBlobNoise::generate() {
         double rx = rng.doubleRange(minRadius, maxRadius);
         double ry = rng.doubleRange(minRadius, maxRadius);
         
-        double angle = rng.doubleRange(0.0, M_PI);
+        double angle = rng.doubleRange(0.0, std::numbers::pi);
         double cos_a = std::cos(angle);
         double sin_a = std::sin(angle);
         
