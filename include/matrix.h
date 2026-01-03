@@ -55,6 +55,63 @@ class Matrix{
 
         std::optional<const T&> tryGet(IntVector2 point2);
 
+        // Hadamard product (element-wise multiplication) - NOT matrix multiplication
+        template <typename U = T>
+        requires (!std::same_as<U, bool>)
+        Matrix<T> operator*(const Matrix<T>& other) const;
+
+        template <typename U = T>
+        requires (!std::same_as<U, bool>)
+        Matrix<T> operator+(const Matrix<T>& other) const;
+
+        template <typename U = T>
+        requires (!std::same_as<U, bool>)
+        Matrix<T> operator-(const Matrix<T> &other) const;
+
+        // Hadamard product (element-wise multiplication) - NOT matrix multiplication
+        template <typename U = T>
+        requires (!std::same_as<U, bool>)
+        Matrix<T>& operator*=(const Matrix<T> &other);
+
+        template <typename U = T>
+        requires (!std::same_as<U, bool>)
+        Matrix<T>& operator+=(const Matrix<T> &other);
+
+        template <typename U = T>
+        requires (!std::same_as<U, bool>)
+        Matrix<T>& operator-=(const Matrix<T> &other);
+
+
+        // Logical AND (element-wise multiplication) - NOT matrix multiplication
+        template <typename U = T>
+        requires (std::same_as<U, bool>)
+        Matrix<bool> operator*(const Matrix<bool>& other) const;
+
+        // Logical OR (element-wise multiplication)
+        template <typename U = T>
+        requires (std::same_as<U, bool>)
+        Matrix<bool> operator+(const Matrix<bool>& other) const;
+        
+        // Logical AND NOT (element-wise multiplication)
+        template <typename U = T>
+        requires (std::same_as<U, bool>)
+        Matrix<bool> operator-(const Matrix<bool> &other) const;
+
+        // Logical AND (element-wise multiplication) - NOT matrix multiplication
+        template <typename U = T>
+        requires (std::same_as<U, bool>)
+        Matrix<bool>& operator*=(const Matrix<bool> &other);
+
+        // Logical OR (element-wise multiplication)
+        template <typename U = T>
+        requires (std::same_as<U, bool>)
+        Matrix<bool>& operator+=(const Matrix<bool> &other);
+
+        // Logical AND NOT (element-wise multiplication)
+        template <typename U = T>
+        requires (std::same_as<U, bool>)
+        Matrix<bool>& operator-=(const Matrix<bool> &other);
+
         template <typename Container>
         requires MatrixContainer<Container, T>
         static Matrix<T> average(Container& container);
@@ -237,6 +294,253 @@ std::optional<const T &> Matrix<T>::tryGet(IntVector2 point2){
         return std::nullopt;
     return matrix[point2.y][point2.x];
 }
+
+template <typename T>
+template <typename U>
+requires (!std::same_as<U, bool>)
+inline Matrix<T> Matrix<T>::operator*(const Matrix<T>& other) const{
+    if (getHeight() <= 0 || getWidth() <= 0){
+        throw std::invalid_argument("Matrix:operator*: matrix should be initialized");
+    }
+    if (getHeight() != other.getHeight() || getWidth() != other.getWidth()){
+        throw std::invalid_argument("Matrix:operator*: dimension mismatch");
+    }
+    Matrix<T> result(width, height);
+    for (size_t y = 0; y < getHeight(); ++y){
+        for (size_t x = 0; x < getWidth(); ++x){
+            result.matrix[y][x] = matrix[y][x] * other.matrix[y][x];
+        }
+    }
+    return result;
+}
+
+template <typename T>
+template <typename U>
+requires (!std::same_as<U, bool>)
+inline Matrix<T> Matrix<T>::operator+(const Matrix<T>& other) const{
+    if (getHeight() <= 0 || getWidth() <= 0){
+        throw std::invalid_argument("Matrix:operator+: matrix should be initialized");
+    }
+    if (getHeight() != other.getHeight() || getWidth() != other.getWidth()){
+        throw std::invalid_argument("Matrix:operator+: dimension mismatch");
+    }
+    Matrix<T> result(width, height);
+    for (size_t y = 0; y < getHeight(); ++y){
+        for (size_t x = 0; x < getWidth(); ++x){
+            result.matrix[y][x] = matrix[y][x] + other.matrix[y][x];
+        }
+    }
+    return result;
+}
+
+template <typename T>
+template <typename U>
+requires (!std::same_as<U, bool>)
+inline Matrix<T> Matrix<T>::operator-(const Matrix<T>& other) const{
+    if (getHeight() < 0 || getWidth() < 0){
+        throw std::invalid_argument("Matrix:operator-: matrix should be initialized");
+    }
+    if (getHeight() != other.getHeight() || getWidth() != other.getWidth()){
+        throw std::invalid_argument("Matrix:operator-: each operand should have the same size");
+    }
+    Matrix<T> result(width, height);
+    for (size_t y = 0; y < getHeight(); ++y){
+        for (size_t x = 0; x < getWidth(); ++x){
+            result.matrix[y][x] = matrix[y][x] - other.matrix[y][x];
+        }
+    }
+    return result;
+}
+
+template <typename T>
+template <typename U>
+requires (!std::same_as<U, bool>)
+Matrix<T>& Matrix<T>::operator*=(const Matrix<T>& other) {
+    if (getHeight() <= 0 || getWidth() <= 0){
+        throw std::invalid_argument("Matrix:operator*: matrix should be initialized");
+    }
+    if (width != other.width || height != other.height) {
+        throw std::invalid_argument("Matrix::operator*=: dimension mismatch");
+    }
+    
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            matrix[y][x] *= other.matrix[y][x];
+        }
+    }
+    
+    return *this;
+}
+
+template <typename T>
+template <typename U>
+requires (!std::same_as<U, bool>)
+Matrix<T>& Matrix<T>::operator+=(const Matrix<T>& other) {
+    if (getHeight() <= 0 || getWidth() <= 0){
+        throw std::invalid_argument("Matrix:operator+=: matrix should be initialized");
+    }
+    if (width != other.width || height != other.height) {
+        throw std::invalid_argument("Matrix::operator+=: dimension mismatch");
+    }
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            matrix[y][x] += other.matrix[y][x];
+        }
+    }
+    return *this;
+}
+
+template <typename T>
+template <typename U>
+requires (!std::same_as<U, bool>)
+Matrix<T>& Matrix<T>::operator-=(const Matrix<T>& other) {
+    if (getHeight() <= 0 || getWidth() <= 0){
+        throw std::invalid_argument("Matrix:operator-=: matrix should be initialized");
+    }
+    if (width != other.width || height != other.height) {
+        throw std::invalid_argument("Matrix::operator-=: dimension mismatch");
+    }
+    
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            matrix[y][x] -= other.matrix[y][x];
+        }
+    }
+    
+    return *this;
+}
+
+
+
+
+
+
+
+
+template <typename T>
+template <typename U>
+requires (std::same_as<U, bool>)
+inline Matrix<bool> Matrix<T>::operator*(const Matrix<bool>& other) const{
+    if (getHeight() <= 0 || getWidth() <= 0){
+        throw std::invalid_argument("Matrix:operator*: matrix should be initialized");
+    }
+    if (getHeight() != other.getHeight() || getWidth() != other.getWidth()){
+        throw std::invalid_argument("Matrix:operator*: dimension mismatch");
+    }
+    Matrix<bool> result(width, height);
+    for (size_t y = 0; y < getHeight(); ++y){
+        for (size_t x = 0; x < getWidth(); ++x){
+            result.matrix[y][x] = matrix[y][x] && other.matrix[y][x];
+        }
+    }
+    return result;
+}
+
+template <typename T>
+template <typename U>
+requires (std::same_as<U, bool>)
+inline Matrix<bool> Matrix<T>::operator+(const Matrix<bool>& other) const{
+    if (getHeight() <= 0 || getWidth() <= 0){
+        throw std::invalid_argument("Matrix:operator+: matrix should be initialized");
+    }
+    if (getHeight() != other.getHeight() || getWidth() != other.getWidth()){
+        throw std::invalid_argument("Matrix:operator+: dimension mismatch");
+    }
+    Matrix<bool> result(width, height);
+    for (size_t y = 0; y < getHeight(); ++y){
+        for (size_t x = 0; x < getWidth(); ++x){
+            result.matrix[y][x] = matrix[y][x] || other.matrix[y][x];
+        }
+    }
+    return result;
+}
+
+template <typename T>
+template <typename U>
+requires (std::same_as<U, bool>)
+inline Matrix<bool> Matrix<T>::operator-(const Matrix<bool>& other) const{
+    if (getHeight() < 0 || getWidth() < 0){
+        throw std::invalid_argument("Matrix:operator-: matrix should be initialized");
+    }
+    if (getHeight() != other.getHeight() || getWidth() != other.getWidth()){
+        throw std::invalid_argument("Matrix:operator-: each operand should have the same size");
+    }
+    Matrix<bool> result(width, height);
+    for (size_t y = 0; y < getHeight(); ++y){
+        for (size_t x = 0; x < getWidth(); ++x){
+            result.matrix[y][x] = matrix[y][x] && !other.matrix[y][x];
+        }
+    }
+    return result;
+}
+
+template <typename T>
+template <typename U>
+requires (std::same_as<U, bool>)
+inline Matrix<bool>& Matrix<T>::operator*=(const Matrix<bool>& other) {
+    if (getHeight() <= 0 || getWidth() <= 0){
+        throw std::invalid_argument("Matrix:operator*=: matrix should be initialized");
+    }
+    if (width != other.width || height != other.height) {
+        throw std::invalid_argument("Matrix::operator*=: dimension mismatch");
+    }
+    
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            matrix[y][x] = matrix[y][x] && other.matrix[y][x];
+        }
+    }
+    
+    return *this;
+}
+
+template <typename T>
+template <typename U>
+requires (std::same_as<U, bool>)
+inline Matrix<bool>& Matrix<T>::operator+=(const Matrix<bool>& other) {
+    if (getHeight() <= 0 || getWidth() <= 0){
+        throw std::invalid_argument("Matrix:operator+=: matrix should be initialized");
+    }
+    if (width != other.width || height != other.height) {
+        throw std::invalid_argument("Matrix::operator+=: dimension mismatch");
+    }
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            matrix[y][x] = matrix[y][x] || other.matrix[y][x];
+        }
+    }
+    return *this;
+}
+
+template <typename T>
+template <typename U>
+requires (std::same_as<U, bool>)
+inline Matrix<bool>& Matrix<T>::operator-=(const Matrix<bool>& other) {
+    if (getHeight() <= 0 || getWidth() <= 0){
+        throw std::invalid_argument("Matrix:operator-=: matrix should be initialized");
+    }
+    if (width != other.width || height != other.height) {
+        throw std::invalid_argument("Matrix::operator-=: dimension mismatch");
+    }
+    
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            matrix[y][x] = matrix[y][x] && !other.matrix[y][x];
+        }
+    }
+    
+    return *this;
+}
+
+
+
+
+
+
+
+
+
+
 
 template <typename T>
 int Matrix<T>::getWidth() const{
