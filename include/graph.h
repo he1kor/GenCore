@@ -6,8 +6,8 @@
 #include "identifiable.h"
 
 template<typename T>
+requires hasID<T>
 class Node{
-    static_assert(std::is_base_of_v<Identifiable, T>, "T must inherit from Identifiable");
     public:
         Node();
         Node(const T& value);
@@ -31,7 +31,6 @@ enum CheckIDVariant {
 template <typename T>
 class Graph{
     public:
-        static_assert(std::is_base_of_v<Identifiable, T>, "T must inherit from Identifiable");
         Graph();
         Graph(const std::vector<std::pair<T, std::vector<Identifiable>>>& rawGraph);
         Graph(std::vector<Node<T>> nodes);
@@ -50,45 +49,54 @@ class Graph{
 };
 
 template <typename T>
+requires hasID<T>
 Node<T>::Node(){}
 
 template <typename T>
+requires hasID<T>
 Node<T>::Node(const T &value){
     this->value = value;
 }
 
 template<typename T>
+requires hasID<T>
 Node<T>::Node(const T& value, std::vector<Identifiable> neighbours){
     this->value = value;
     this->neighbours = std::set(neighbours.begin(), neighbours.end());
 }
 
 template<typename T>
+requires hasID<T>
 void Node<T>::addNeighbour(const Identifiable& id){
     neighbours.insert(id);
 }
 
 template<typename T>
+requires hasID<T>
 void Node<T>::removeNeighbour(const Identifiable& id){
     neighbours.erase(id);
 }
 
 template<typename T>
+requires hasID<T>
 void Node<T>::clearNeighbours(){
     neighbours.clear();
 }
 
 template<typename T>
+requires hasID<T>
 const std::set<Identifiable> &Node<T>::getNeighbours() const{
     return neighbours;
 }
 
 template<typename T>
+requires hasID<T>
 Identifiable Node<T>::getID() const{
     return static_cast<Identifiable>(value);
 }
 
 template<typename T>
+requires hasID<T>
 const T& Node<T>::getValue() const{
     return value;
 }

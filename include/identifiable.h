@@ -3,6 +3,8 @@
 
 #include <iostream>
 
+
+
 class Identifiable{
     protected:
         int id = nullID;
@@ -20,6 +22,9 @@ class Identifiable{
         
         bool operator!=(const Identifiable& other) const;
 };
+
+template<typename T>
+concept hasID = std::is_base_of_v<Identifiable, T>;
 
 
 std::ostream& operator<<(std::ostream& os, const Identifiable& id);
