@@ -5,8 +5,7 @@
 
 #include "identifiable.h"
 
-template<typename T>
-requires hasID<T>
+template<hasID T>
 class Node{
     public:
         Node();
@@ -28,7 +27,7 @@ enum CheckIDVariant {
     OUT_OF_SIZE
 };
 
-template <typename T>
+template <hasID T>
 class Graph{
     public:
         Graph();
@@ -48,55 +47,46 @@ class Graph{
     private:
 };
 
-template <typename T>
-requires hasID<T>
+template<hasID T>
 Node<T>::Node(){}
 
-template <typename T>
-requires hasID<T>
+template<hasID T>
 Node<T>::Node(const T &value){
     this->value = value;
 }
 
-template<typename T>
-requires hasID<T>
+template<hasID T>
 Node<T>::Node(const T& value, std::vector<Identifiable> neighbours){
     this->value = value;
     this->neighbours = std::set(neighbours.begin(), neighbours.end());
 }
 
-template<typename T>
-requires hasID<T>
+template<hasID T>
 void Node<T>::addNeighbour(const Identifiable& id){
     neighbours.insert(id);
 }
 
-template<typename T>
-requires hasID<T>
+template<hasID T>
 void Node<T>::removeNeighbour(const Identifiable& id){
     neighbours.erase(id);
 }
 
-template<typename T>
-requires hasID<T>
+template<hasID T>
 void Node<T>::clearNeighbours(){
     neighbours.clear();
 }
 
-template<typename T>
-requires hasID<T>
+template<hasID T>
 const std::set<Identifiable> &Node<T>::getNeighbours() const{
     return neighbours;
 }
 
-template<typename T>
-requires hasID<T>
+template<hasID T>
 Identifiable Node<T>::getID() const{
     return static_cast<Identifiable>(value);
 }
 
-template<typename T>
-requires hasID<T>
+template<hasID T>
 const T& Node<T>::getValue() const{
     return value;
 }
@@ -104,10 +94,10 @@ const T& Node<T>::getValue() const{
 
 
 
-template<typename T>
+template<hasID T>
 Graph<T>::Graph(){}
 
-template<typename T>
+template<hasID T>
 Graph<T>::Graph(const std::vector<std::pair<T, std::vector<Identifiable>>>& rawGraph){
     nodes.reserve(rawGraph.size());
     ids.reserve(rawGraph.size());
@@ -117,7 +107,7 @@ Graph<T>::Graph(const std::vector<std::pair<T, std::vector<Identifiable>>>& rawG
     }
 }
 
-template<typename T>
+template<hasID T>
 Graph<T>::Graph(std::vector<Node<T>> nodes_vec){
     nodes.reserve(nodes_vec.size());
     ids.reserve(nodes.size());
@@ -127,23 +117,23 @@ Graph<T>::Graph(std::vector<Node<T>> nodes_vec){
     }
 }
 
-template<typename T>
+template<hasID T>
 void Graph<T>::removeEdge(Identifiable node1, Identifiable node2){
     nodes.at(node1).removeNeighbour(node2);
     nodes.at(node2).removeNeighbour(node1);
 }
 
-template<typename T>
+template<hasID T>
 int Graph<T>::getSize() const{
     return nodes.size();
 }
 
-template<typename T>
+template<hasID T>
 const std::vector<Identifiable>& Graph<T>::getIDs() const{
     return ids;
 }
 
-template<typename T>
+template<hasID T>
 void Graph<T>::separate(Identifiable separated_id){
     for (Identifiable node_id : nodes.at(separated_id).getNeighbours()){ 
         nodes[node_id].removeNeighbour(separated_id);
@@ -151,23 +141,23 @@ void Graph<T>::separate(Identifiable separated_id){
     nodes[separated_id].clearNeighbours();
 }
 
-template<typename T>
+template<hasID T>
 const Node<T> &Graph<T>::getNode(Identifiable id) const{
     return nodes.at(id);
 }
 
-template<typename T>
+template<hasID T>
 const std::set<Identifiable> &Graph<T>::getNeighbours(Identifiable id) const{
     return getNode(id).getNeighbours();
 }
 
 
-template<typename T>
+template<hasID T>
 const T& Graph<T>::getValue(Identifiable ID) const{
     return getNode(ID).getValue();
 }
 
-template<typename T>
+template<hasID T>
 int Graph<T>::size() const{
     return nodes.size();
 }
