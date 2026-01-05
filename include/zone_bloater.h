@@ -172,8 +172,8 @@ template <typename T, typename EdgeType>
 void ZoneBloater<T, EdgeType>::setEdgeExpanders(const std::unordered_map<Identifiable, IntVector2, IDHash>& startingPoints, const EdgeGraph<T, EdgeType>& graph){
     double ratio = 0.5;
     
-    for (const Identifiable& edgeID : graph.getEdgeIDs()){
-        auto [startPointID1, startPointID2] = graph.getEdgeNodeIDs(edgeID);
+    for (const Identifiable& edgeID : graph.getSymEdgeIDs()){
+        auto [startPointID1, startPointID2] = graph.getSymEdgeNodeIDs(edgeID);
         RasterLine line(
             startingPoints.at(startPointID1),
             startingPoints.at(startPointID2)
