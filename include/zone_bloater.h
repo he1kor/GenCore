@@ -16,11 +16,11 @@
 #include "line.h"
 #include "bloat_strategy.h"
 
-template<typename T, typename EdgeType = Identifiable>
+template<typename T, typename SymEdgeT, typename AsymEdgeT>
 class ZoneBloater : public Simulator, public ZoneTilePusher{
     public:
         //Empty grid tiles are considered NullID
-        void initEdgeVoronoi(const EdgeGraph<T, EdgeType>& graph, std::shared_ptr<Grid<T>> initialGrid);
+        void initEdgeVoronoi(const EdgeGraph<T, SymEdgeT, AsymEdgeT>& graph, std::shared_ptr<Grid<T>> initialGrid);
         void initVoronoi(std::shared_ptr<Grid<T>> initialGrid);
         void initAdjacentCornerFill(std::shared_ptr<Grid<T>> grid);
         virtual void onStart() override;
@@ -51,12 +51,11 @@ class ZoneBloater : public Simulator, public ZoneTilePusher{
         std::unique_ptr<BloatStrategy> bloatStrategy;
 
     private:
-        
-        void setEdgeExpanders(const std::unordered_map<Identifiable, IntVector2, IDHash>& startingPoints, const EdgeGraph<T, EdgeType>& graph);
+        void setEdgeExpanders(const std::unordered_map<Identifiable, IntVector2, IDHash>& startingPoints, const EdgeGraph<T, SymEdgeT, AsymEdgeT>& graph);
 };
 
-template <typename T, typename EdgeType>
-void ZoneBloater<T, EdgeType>::initEdgeVoronoi(const EdgeGraph<T, EdgeType>& graph, std::shared_ptr<Grid<T>> initialGrid){
+template <typename T, typename SymEdgeT, typename AsymEdgeT>
+void ZoneBloater<T, SymEdgeT, AsymEdgeT>::initEdgeVoronoi(const EdgeGraph<T, SymEdgeT, AsymEdgeT>& graph, std::shared_ptr<Grid<T>> initialGrid){
     grid = initialGrid;
     std::unordered_map<Identifiable, IntVector2, IDHash> startingPoints;
     for (auto it = grid->begin(); it != grid->end(); ++it){
@@ -69,8 +68,8 @@ void ZoneBloater<T, EdgeType>::initEdgeVoronoi(const EdgeGraph<T, EdgeType>& gra
     max_expanders = 8 * grid->getWidth() * grid->getHeight();
 }
 
-template <typename T, typename EdgeType>
-void ZoneBloater<T, EdgeType>::initVoronoi(std::shared_ptr<Grid<T>> initialGrid){
+template <typename T, typename SymEdgeT, typename AsymEdgeT>
+void ZoneBloater<T, SymEdgeT, AsymEdgeT>::initVoronoi(std::shared_ptr<Grid<T>> initialGrid){
     grid = initialGrid;
     for (auto it = grid->begin(); it != grid->end(); ++it){
         if (*it != Identifiable::nullID){
@@ -81,8 +80,8 @@ void ZoneBloater<T, EdgeType>::initVoronoi(std::shared_ptr<Grid<T>> initialGrid)
     max_expanders = 8 * grid->getWidth() * grid->getHeight();
 }
 
-template <typename T, typename EdgeType>
-void ZoneBloater<T, EdgeType>::initAdjacentCornerFill(std::shared_ptr<Grid<T>> grid){
+template <typename T, typename SymEdgeT, typename AsymEdgeT>
+void ZoneBloater<T, SymEdgeT, AsymEdgeT>::initAdjacentCornerFill(std::shared_ptr<Grid<T>> grid){
     setBloatMode(bloatStrategies::AdjacentCornerFill());
     this->grid = grid;
     for (auto it = grid->begin(); it != grid->end(); ++it){
@@ -93,16 +92,16 @@ void ZoneBloater<T, EdgeType>::initAdjacentCornerFill(std::shared_ptr<Grid<T>> g
     max_expanders = 4 * grid->getWidth() * grid->getHeight();
 }
 
-template <typename T, typename EdgeType>
-void ZoneBloater<T, EdgeType>::onStart(){
+template <typename T, typename SymEdgeT, typename AsymEdgeT>
+void ZoneBloater<T, SymEdgeT, AsymEdgeT>::onStart(){
     if (!grid){
         finish();
         throw std::invalid_argument("No grid is set!");
     }
 }
 
-template <typename T, typename EdgeType>
-void ZoneBloater<T, EdgeType>::onStep(){
+template <typename T, typename SymEdgeT, typename AsymEdgeT>
+void ZoneBloater<T, SymEdgeT, AsymEdgeT>::onStep(){
     currentStepSize = nextExpanders.size();
     if (currentStepSize > max_expanders)
         throw std::logic_error("Size is more than grid:\t" + std::to_string(currentStepSize) + "\n");
@@ -115,81 +114,80 @@ void ZoneBloater<T, EdgeType>::onStep(){
         finish();
 }
 
-template <typename T, typename EdgeType>
-void ZoneBloater<T, EdgeType>::onReset(){
+template <typename T, typename SymEdgeT, typename AsymEdgeT>
+void ZoneBloater<T, SymEdgeT, AsymEdgeT>::onReset(){
     nextExpanders = std::queue<std::shared_ptr<ZoneTile>>();
 }
 
-template <typename T, typename EdgeType>
-void ZoneBloater<T, EdgeType>::finishAndReset(){
+template <typename T, typename SymEdgeT, typename AsymEdgeT>
+void ZoneBloater<T, SymEdgeT, AsymEdgeT>::finishAndReset(){
     if (isRunning())
         finish();
     if (isFinished())
         reset();
 }
 
-template <typename T, typename EdgeType>
- std::shared_ptr<Grid<T>> ZoneBloater<T, EdgeType>::getGrid() const{
+template <typename T, typename SymEdgeT, typename AsymEdgeT>
+std::shared_ptr<Grid<T>> ZoneBloater<T, SymEdgeT, AsymEdgeT>::getGrid() const{
     return grid;
 }
 
-template <typename T, typename EdgeType>
+template <typename T, typename SymEdgeT, typename AsymEdgeT>
 template <typename Strategy>
 requires std::is_base_of_v<BloatStrategy, std::decay_t<Strategy>>
-void ZoneBloater<T, EdgeType>::setBloatMode(Strategy&& bloatStrategy){
+void ZoneBloater<T, SymEdgeT, AsymEdgeT>::setBloatMode(Strategy&& bloatStrategy){
     if (!isInitialized())
         throw std::logic_error("The status is not INIT");
     this->bloatStrategy = std::make_unique<std::decay_t<Strategy>>(std::forward<Strategy>(bloatStrategy));
     this->bloatStrategy->setZoneTilePusher(this->self());
 }
 
-template <typename T, typename EdgeType>
-void ZoneBloater<T, EdgeType>::push(const ZoneTile& zoneTile){
+template <typename T, typename SymEdgeT, typename AsymEdgeT>
+void ZoneBloater<T, SymEdgeT, AsymEdgeT>::push(const ZoneTile& zoneTile){
     nextExpanders.push(std::make_shared<ZoneTile>(zoneTile.x, zoneTile.y, zoneTile.zoneID));
 }
 
-template <typename T, typename EdgeType>
-void ZoneBloater<T, EdgeType>::setZoneTile(const ZoneTile &zoneTile){
+template <typename T, typename SymEdgeT, typename AsymEdgeT>
+void ZoneBloater<T, SymEdgeT, AsymEdgeT>::setZoneTile(const ZoneTile &zoneTile){
     grid->setTile(zoneTile.x, zoneTile.y, zoneTile.zoneID);
 }
 
-template <typename T, typename EdgeType>
-bool ZoneBloater<T, EdgeType>::isEmpty(IntVector2 point) const{
+template <typename T, typename SymEdgeT, typename AsymEdgeT>
+bool ZoneBloater<T, SymEdgeT, AsymEdgeT>::isEmpty(IntVector2 point) const{
     return grid->isEmpty(point);
 }
 
-template <typename T, typename EdgeType>
-bool ZoneBloater<T, EdgeType>::isValidPoint(IntVector2 point) const{
+template <typename T, typename SymEdgeT, typename AsymEdgeT>
+bool ZoneBloater<T, SymEdgeT, AsymEdgeT>::isValidPoint(IntVector2 point) const{
     return grid->isValidPoint(point);
 }
 
-template <typename T, typename EdgeType>
-std::optional<Identifiable> ZoneBloater<T, EdgeType>::tryGetID(IntVector2 point) const{
+template <typename T, typename SymEdgeT, typename AsymEdgeT>
+std::optional<Identifiable> ZoneBloater<T, SymEdgeT, AsymEdgeT>::tryGetID(IntVector2 point) const{
     return grid->tryGetID(point);
 }
 
-template <typename T, typename EdgeType>
-void ZoneBloater<T, EdgeType>::setEdgeExpanders(const std::unordered_map<Identifiable, IntVector2, IDHash>& startingPoints, const EdgeGraph<T, EdgeType>& graph){
+template <typename T, typename SymEdgeT, typename AsymEdgeT>
+void ZoneBloater<T, SymEdgeT, AsymEdgeT>::setEdgeExpanders(const std::unordered_map<Identifiable, IntVector2, IDHash>& startingPoints, const EdgeGraph<T, SymEdgeT, AsymEdgeT>& graph){
     double ratio = 0.5;
     
-    for (const Identifiable& edgeID : graph.getSymEdgeIDs()){
-        auto [startPointID1, startPointID2] = graph.getSymEdgeNodeIDs(edgeID);
+    for (const auto& [nodePair, edge] : graph.getSymEdges()){
         RasterLine line(
-            startingPoints.at(startPointID1),
-            startingPoints.at(startPointID2)
+            startingPoints.at(nodePair.first),
+            startingPoints.at(nodePair.second)
         );
 
         if constexpr (std::is_base_of_v<Radial, T>){
-            double radius1 = static_cast<Radial>(graph.getValue(startPointID1)).getRadius();
-            double radius2 = static_cast<Radial>(graph.getValue(startPointID2)).getRadius();
+            double radius1 = static_cast<Radial>(graph.getValue(nodePair.first)).getRadius();
+            double radius2 = static_cast<Radial>(graph.getValue(nodePair.second)).getRadius();
             ratio = radius1 / (radius1 + radius2);
         }
         size_t upperBound = static_cast<size_t>(ratio * line.size());
         for (size_t i = 0; i < upperBound; i++){
-            nextExpanders.push(std::make_shared<ZoneTile>(line[i], startPointID1));
+            nextExpanders.push(std::make_shared<ZoneTile>(line[i], nodePair.first));
         }
         for (size_t i = upperBound; i < line.size(); i++){
-            nextExpanders.push(std::make_shared<ZoneTile>(line[i], startPointID2));
+            nextExpanders.push(std::make_shared<ZoneTile>(line[i], nodePair.second));
         }
     }
 }

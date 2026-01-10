@@ -22,7 +22,8 @@ Matrix<double> EllipticalBlobNoise::generate() {
         double cx = rng.doubleRange(0.0, getWidth());
         double cy = rng.doubleRange(0.0, getHeight());
         
-        double intensity = rng.doubleRange(-0.3, 0.3);
+        // double intensity = rng.doubleRange(-0.3, 0.3);
+        double intensity = rng.chanceOccurred(0.5) ? 0.4 : -0.4;
         
         double rx = rng.doubleRange(minRadius, maxRadius);
         double ry = rng.doubleRange(minRadius, maxRadius);

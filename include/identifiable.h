@@ -37,8 +37,14 @@ struct IDHash{
 
 struct PairIDHash {
     std::size_t operator()(const std::pair<Identifiable, Identifiable>& e) const {
-        auto a = std::min(e.first.getID(), e.second.getID());
-        auto b = std::max(e.first.getID(), e.second.getID());
-        return std::hash<int>{}(a) ^ (std::hash<int>{}(b) << 1);
+        auto [a, b] = PairIDHash::normalize(e);
+        return std::hash<int>{}(a.getID()) ^ (std::hash<int>{}(b.getID()) << 1);
+    }
+
+    static std::pair<Identifiable, Identifiable> normalize(const std::pair<Identifiable, Identifiable>& pair){
+        return std::make_pair(
+            Identifiable(std::min(pair.first.getID(), pair.second.getID())),
+            Identifiable(std::max(pair.first.getID(), pair.second.getID()))
+        );
     }
 };

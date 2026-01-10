@@ -6,7 +6,7 @@
 
 #include <functional>
 
-template <typename NodeT, hasID SymEdgeT = Identifiable, hasID AsymEdgeT = Identifiable>
+template <hasID NodeT, typename SymEdgeT, typename AsymEdgeT>
 class EdgeGraph : public Graph<NodeT>{
     public:
         EdgeGraph();
@@ -14,153 +14,172 @@ class EdgeGraph : public Graph<NodeT>{
         EdgeGraph(const std::vector<std::pair<NodeT, std::vector<Identifiable>>>& rawGraph);
         EdgeGraph(
             const std::vector<std::pair<NodeT, std::vector<Identifiable>>>& rawGraph,
-            const std::unordered_map<std::pair<Identifiable, Identifiable>, SymEdgeT, PairIDHash>& edges
+            const std::unordered_map<std::pair<Identifiable, Identifiable>, SymEdgeT, PairIDHash>& symEdges,
+            const std::unordered_map<std::pair<Identifiable, Identifiable>, AsymEdgeT, PairIDHash>& asymEdges
         );
         EdgeGraph(
             const std::vector<Node<NodeT>>& nodes, 
-            const std::unordered_map<std::pair<Identifiable, Identifiable>, SymEdgeT, PairIDHash>& edges);
+            const std::unordered_map<std::pair<Identifiable, Identifiable>, SymEdgeT, PairIDHash>& symEdges,
+            const std::unordered_map<std::pair<Identifiable, Identifiable>, AsymEdgeT, PairIDHash>& asymEdges
+        );
 
-        void initializeEdges(const std::unordered_map<std::pair<Identifiable, Identifiable>, SymEdgeT, PairIDHash>& edges);
+        void initializeSymEdges(const std::unordered_map<std::pair<Identifiable, Identifiable>, SymEdgeT, PairIDHash>& symEdges);
+        void initializeAsymEdges(const std::unordered_map<std::pair<Identifiable, Identifiable>, AsymEdgeT, PairIDHash>& asymEdges);
+
         void separate(Identifiable id) override;
+        
         void removeEdge(Identifiable node1, Identifiable node2) override;
-        Identifiable getSymEdgeID(Identifiable node1, Identifiable node2) const;
-        const SymEdgeT& getSymEdge(Identifiable edgeID) const;
-        const SymEdgeT& getSymEdge(Identifiable node1, Identifiable node2) const;
-        std::pair<Identifiable, Identifiable> getSymEdgeNodeIDs(Identifiable edgeID) const;
-        std::pair<NodeT, NodeT> getSymEdgeNodes(Identifiable edgeID) const;
-        const std::vector<Identifiable>& getSymEdgeIDs() const;
+
+        const SymEdgeT& getSymEdge(const NodeT& mainNode, const NodeT& neighbourNode) const;
+        const AsymEdgeT& getAsymEdge(const NodeT& mainNode, const NodeT& neighbourNode) const;
+
+        const std::unordered_map<std::pair<Identifiable, Identifiable>, SymEdgeT, PairIDHash>& getSymEdges() const;
+        const std::unordered_map<std::pair<Identifiable, Identifiable>, AsymEdgeT, PairIDHash>& getAsymEdges() const;
     protected:
     private:
-        std::unordered_map<std::pair<Identifiable, Identifiable>, Identifiable, PairIDHash> nodesToEdge;
-        std::unordered_map<Identifiable, std::pair<Identifiable, Identifiable>, IDHash> edgeToNodes;
-        std::unordered_map<Identifiable, SymEdgeT, IDHash> symEdges;
-        std::vector<Identifiable> symEdgeIDs;
-        void initializeEmptyEdges();
+        // Node order in pair doesn't matter
+        std::unordered_map<std::pair<Identifiable, Identifiable>, SymEdgeT, PairIDHash> nodesToSymEdge;
+
+        // Node order in pair matters
+        std::unordered_map<std::pair<Identifiable, Identifiable>, AsymEdgeT, PairIDHash> nodesToAsymEdge;
+
+        void initializeEmptySymEdges();
+        void initializeEmptyAsymEdges();
 };
 
 
 
-template <typename NodeT, hasID SymEdgeT, hasID AsymEdgeT>
+template <hasID NodeT, typename SymEdgeT, typename AsymEdgeT>
 EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::EdgeGraph(){}
 
-template <typename NodeT, hasID SymEdgeT, hasID AsymEdgeT>
-void EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::initializeEmptyEdges(){
-    if (nodesToEdge.size() != 0){
-        throw std::logic_error("Edges already initialized.");
+template <hasID NodeT, typename SymEdgeT, typename AsymEdgeT>
+void EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::initializeEmptySymEdges(){
+    if (!nodesToSymEdge.empty()){
+        throw std::logic_error("Sym edges already initialized.");
     }
     int maxEdgeID = 0;
-    for (Identifiable id : this->getIDs()){
-        auto node1 = this->getNode(id);
-        for (Identifiable id2 : node1.getNeighbours()){
-            const Node<NodeT>& node2 = this->getNode(id2);
-            if (nodesToEdge.count(std::make_pair(node2.getID(), node1.getID()))){
-                nodesToEdge[std::make_pair(node1.getID(), node2.getID())] = nodesToEdge.at(std::make_pair(node2.getID(), node1.getID()));
+    for (Identifiable id1 : this->getIDs()){
+        for (Identifiable id2 : this->getNode(id1).getNeighbours()){
+            auto pair12 = std::make_pair(id1, id2);
+            auto pair21 = std::make_pair(id2, id1);
+            if (nodesToSymEdge.count(pair21)){
                 continue;
             }
-            edgeToNodes[maxEdgeID] = std::make_pair(node1.getID(), node2.getID());
-            nodesToEdge[std::make_pair(node1.getID(), node2.getID())] = maxEdgeID;
-
-            symEdges[maxEdgeID] = SymEdgeT();
-            symEdgeIDs.push_back(static_cast<Identifiable>(maxEdgeID));
+            nodesToSymEdge[pair12] = maxEdgeID;
             maxEdgeID++;
         }
     }
 }
 
-template <typename NodeT, hasID SymEdgeT, hasID AsymEdgeT>
+template <hasID NodeT, typename SymEdgeT, typename AsymEdgeT>
+void EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::initializeEmptyAsymEdges(){
+    if (!nodesToAsymEdge.empty()){
+        throw std::logic_error("Asym edges already initialized.");
+    }
+    int maxEdgeID = 0;
+    for (Identifiable id1 : this->getIDs()){
+        for (Identifiable id2 : this->getNode(id1).getNeighbours()){
+            auto pair12 = std::make_pair(id1, id2);
+            auto pair21 = std::make_pair(id2, id1);
+            if (nodesToAsymEdge.count(pair21)){
+                continue;
+            }
+            nodesToAsymEdge[pair12] = maxEdgeID;
+            maxEdgeID++;
+        }
+    }
+}
+
+template <hasID NodeT, typename SymEdgeT, typename AsymEdgeT>
 EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::EdgeGraph(
     const std::vector<std::pair<NodeT, std::vector<Identifiable>>>& rawGraph)
         : Graph<NodeT>(rawGraph){
-            initializeEmptyEdges();
+            initializeEmptySymEdges();
+            initializeEmptyAsymEdges();
         }
 
-template <typename NodeT, hasID SymEdgeT, hasID AsymEdgeT>
+template <hasID NodeT, typename SymEdgeT, typename AsymEdgeT>
 EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::EdgeGraph(
     const std::vector<Node<NodeT>>& nodes)
         : Graph<NodeT>(nodes){
-            initializeEmptyEdges();
+            initializeEmptySymEdges();
+            initializeEmptyAsymEdges();
         }
     
-template <typename NodeT, hasID SymEdgeT, hasID AsymEdgeT>
+template<hasID NodeT, typename SymEdgeT, typename AsymEdgeT>
 EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::EdgeGraph(
     const std::vector<std::pair<NodeT, std::vector<Identifiable>>>& rawGraph,
-    const std::unordered_map<std::pair<Identifiable, Identifiable>, SymEdgeT, PairIDHash>& edges)
-        : Graph<NodeT>(rawGraph){
-            initializeEdges(edges);
-        }
+    const std::unordered_map<std::pair<Identifiable, Identifiable>, SymEdgeT, PairIDHash>& symEdges,
+    const std::unordered_map<std::pair<Identifiable, Identifiable>, AsymEdgeT, PairIDHash>& asymEdges
+)
+: Graph<NodeT>(rawGraph){
+    initializeSymEdges(symEdges);
+    initializeAsymEdges(asymEdges);
+}
 
-template <typename NodeT, hasID SymEdgeT, hasID AsymEdgeT>
+template <hasID NodeT, typename SymEdgeT, typename AsymEdgeT>
 EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::EdgeGraph(
     const std::vector<Node<NodeT>>& nodes,
-    const std::unordered_map<std::pair<Identifiable, Identifiable>, SymEdgeT, PairIDHash>& edges)
-        : Graph<NodeT>(nodes){
-            initializeEdges(edges);
-        }
+    const std::unordered_map<std::pair<Identifiable, Identifiable>, SymEdgeT, PairIDHash>& symEdges,
+    const std::unordered_map<std::pair<Identifiable, Identifiable>, AsymEdgeT, PairIDHash>& asymEdges
+)
+: Graph<NodeT>(nodes){
+    initializeSymEdges(symEdges);
+    initializeAsymEdges(asymEdges);
+}
 
-template <typename NodeT, hasID SymEdgeT, hasID AsymEdgeT>
-void EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::initializeEdges(
-    const std::unordered_map<std::pair<Identifiable, Identifiable>, SymEdgeT, PairIDHash>& edges){
-        nodesToEdge.reserve(edges.size() * 2);
-        edgeToNodes.reserve(edges.size());
-        symEdges.reserve(edges.size());
-        symEdgeIDs.reserve(edges.size());
-        for (const auto& [nodePair, edge] : edges){
-            nodesToEdge[nodePair] = static_cast<Identifiable>(edge);
-            nodesToEdge[std::make_pair(nodePair.second, nodePair.first)] = static_cast<Identifiable>(edge); //TODO:: make nodesToEdge store only N pairs instead of 2*N with reversed pairs;
-            edgeToNodes[static_cast<Identifiable>(edge)] = nodePair;
-            symEdges[static_cast<Identifiable>(edge)] = edge;
-            symEdgeIDs.push_back(static_cast<Identifiable>(edge));
-        }
+template <hasID NodeT, typename SymEdgeT, typename AsymEdgeT>
+void EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::initializeSymEdges(
+const std::unordered_map<std::pair<Identifiable, Identifiable>, SymEdgeT, PairIDHash>& edges){
+    nodesToSymEdge.reserve(edges.size() * 2);
+    for (const auto& [nodePair, edge] : edges){
+        nodesToSymEdge[PairIDHash::normalize(nodePair)] = edge;
     }
+}
 
-template <typename NodeT, hasID SymEdgeT, hasID AsymEdgeT>
+template <hasID NodeT, typename SymEdgeT, typename AsymEdgeT>
+void EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::initializeAsymEdges(
+const std::unordered_map<std::pair<Identifiable, Identifiable>, AsymEdgeT, PairIDHash>& edges){
+    nodesToAsymEdge = edges;
+}
+
+template <hasID NodeT, typename SymEdgeT, typename AsymEdgeT>
 void EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::removeEdge(Identifiable node1, Identifiable node2){
     Graph<NodeT>::removeEdge(node1, node2);
-    
-    edgeToNodes.erase(nodesToEdge.at({node1, node2}));
-
-    nodesToEdge.erase({node1, node2});
-    nodesToEdge.erase({node2, node1});
+    nodesToSymEdge.erase({node1, node2});
+    nodesToSymEdge.erase({node2, node1});
+    nodesToAsymEdge.erase({node1, node2});
+    nodesToAsymEdge.erase({node2, node1});
 }
 
-template <typename NodeT, hasID SymEdgeT, hasID AsymEdgeT>
-Identifiable EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::getSymEdgeID(Identifiable node1, Identifiable node2) const{
-    return nodesToEdge.at({node1, node2});
-}
-
-template <typename NodeT, hasID SymEdgeT, hasID AsymEdgeT>
-const SymEdgeT &EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::getSymEdge(Identifiable symEdgeID) const{
-    return symEdges[symEdgeID];
-}
-
-template <typename NodeT, hasID SymEdgeT, hasID AsymEdgeT>
-const SymEdgeT &EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::getSymEdge(Identifiable node1, Identifiable node2) const{
-    return getEdge(getSymEdgeID(node1, node2));
-}
-
-template <typename NodeT, hasID SymEdgeT, hasID AsymEdgeT>
-std::pair<Identifiable, Identifiable> EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::getSymEdgeNodeIDs(Identifiable symEdgeID) const{
-    return edgeToNodes.at(symEdgeID);
-}
-
-template <typename NodeT, hasID SymEdgeT, hasID AsymEdgeT>
-std::pair<NodeT, NodeT> EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::getSymEdgeNodes(Identifiable symEdgeID) const{
-    auto [id1, id2] = getSymEdgeNodeIDs(symEdgeID);
-    return {this->getNode(id1), this->getNode(id2)};
-}
-
-template <typename NodeT, hasID SymEdgeT, hasID AsymEdgeT>
-const std::vector<Identifiable> &EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::getSymEdgeIDs() const{
-    return symEdgeIDs;
-}
-
-template <typename NodeT, hasID SymEdgeT, hasID AsymEdgeT>
+template <hasID NodeT, typename SymEdgeT, typename AsymEdgeT>
 void EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::separate(Identifiable id){
     for (Identifiable neighbourID : this->getNeighbours(id)){
-        edgeToNodes.erase(nodesToEdge.at({id, neighbourID}));
-
-        nodesToEdge.erase({neighbourID, id});
-        nodesToEdge.erase({id, neighbourID});
+        nodesToSymEdge.erase({neighbourID, id});
+        nodesToSymEdge.erase({id, neighbourID});
+        nodesToAsymEdge.erase({id, neighbourID});
+        nodesToAsymEdge.erase({neighbourID, id});
     }
-    this->separate(id);
+    Graph<NodeT>::separate(id);
+}
+
+
+template <hasID NodeT, typename SymEdgeT, typename AsymEdgeT>
+const SymEdgeT &EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::getSymEdge(const NodeT& node1, const NodeT& node2) const{
+    return nodesToSymEdge.at(PairIDHash::normalize(std::make_pair(node1, node2)));
+}
+
+template <hasID NodeT, typename SymEdgeT, typename AsymEdgeT>
+const AsymEdgeT &EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::getAsymEdge(const NodeT& mainNode, const NodeT& neighbourNode) const{
+    return nodesToAsymEdge.at(mainNode, neighbourNode);
+}
+
+template <hasID NodeT, typename SymEdgeT, typename AsymEdgeT>
+const std::unordered_map<std::pair<Identifiable, Identifiable>, SymEdgeT, PairIDHash> &EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::getSymEdges() const{
+    return nodesToSymEdge;
+}
+
+template <hasID NodeT, typename SymEdgeT, typename AsymEdgeT>
+const std::unordered_map<std::pair<Identifiable, Identifiable>, AsymEdgeT, PairIDHash> &EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::getAsymEdges() const{
+    return nodesToAsymEdge;
 }
