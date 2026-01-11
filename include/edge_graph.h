@@ -133,6 +133,9 @@ void EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::initializeSymEdges(
 const std::unordered_map<std::pair<Identifiable, Identifiable>, SymEdgeT, PairIDHash>& edges){
     nodesToSymEdge.reserve(edges.size() * 2);
     for (const auto& [nodePair, edge] : edges){
+        if (!this->getNeighbours(nodePair.first).contains(nodePair.second)){
+            throw std::invalid_argument(std::format("Unexpected edge {} - {}", nodePair.first, nodePair.second));
+        }
         nodesToSymEdge[PairIDHash::normalize(nodePair)] = edge;
     }
 }
@@ -141,6 +144,11 @@ template <hasID NodeT, typename SymEdgeT, typename AsymEdgeT>
 void EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::initializeAsymEdges(
 const std::unordered_map<std::pair<Identifiable, Identifiable>, AsymEdgeT, PairIDHash>& edges){
     nodesToAsymEdge = edges;
+    for (const auto& [nodePair, edge] : edges){
+        if (!this->getNeighbours(nodePair.first).contains(nodePair.second)){
+            throw std::invalid_argument(std::format("Unexpected edge {} - {}", nodePair.first, nodePair.second));
+        }
+    }
 }
 
 template <hasID NodeT, typename SymEdgeT, typename AsymEdgeT>
