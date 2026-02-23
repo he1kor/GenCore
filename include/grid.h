@@ -54,7 +54,7 @@ class Grid{
 
         std::vector<T> applyToDoublePoints(DoubleVector2 size);
 
-        bool isValidPoint(IntVector2 point2);
+        bool isValidPoint(IntVector2 point2) const;
 
         std::optional<Identifiable>tryGetID(IntVector2 point2);
         std::optional<T>tryGetTile(IntVector2 point2);
@@ -77,6 +77,26 @@ class Grid{
         };
         Iterator begin() { return Iterator(*this, 0, 0); }
         Iterator end() { return Iterator(*this, 0, getHeight()); }
+
+        class ConstIterator{
+            private:
+                const Grid& grid;
+                int y;
+                int x;
+            public:
+                int getX() const{return x;};
+                int getY() const{return y;};
+                void move(int x, int y){this->y += y; this->x += x;};
+                ConstIterator(const Grid& grid, int x, int y) : grid(grid), x(x), y(y){}
+                Identifiable operator*(){return grid.getTileID(x, y);}
+                ConstIterator& operator++();
+                ConstIterator& operator--();
+                bool operator==(const ConstIterator& other) const;
+                bool operator!=(const ConstIterator& other) const{return !(*this == other);}
+        };
+        ConstIterator begin() const { return ConstIterator(*this, 0, 0); }
+        ConstIterator end() const { return ConstIterator(*this, 0, getHeight()); }
+
 
     private:
         int width = -1;
@@ -107,6 +127,34 @@ Grid<T>::Iterator& Grid<T>::Iterator::operator--(){
 
 template <typename T>
 bool Grid<T>::Iterator::operator==(const Iterator &other) const{
+    return 
+        this->grid.matrix.data() == other.grid.matrix.data() &&
+        this->x == other.x &&
+        this->y == other.y;
+}
+
+
+template <typename T>
+Grid<T>::ConstIterator& Grid<T>::ConstIterator::operator++(){
+    x++;
+    if (x >= grid.getWidth()){
+        x = 0;
+        y++;
+    }
+    return *this;
+}
+template <typename T>
+Grid<T>::ConstIterator& Grid<T>::ConstIterator::operator--(){
+    x--;
+    if (x < 0){
+        x = grid.getWidth()-1;
+        y--;
+    }
+    return *this;
+}
+
+template <typename T>
+bool Grid<T>::ConstIterator::operator==(const ConstIterator &other) const{
     return 
         this->grid.matrix.data() == other.grid.matrix.data() &&
         this->x == other.x &&
@@ -235,7 +283,7 @@ std::vector<T> Grid<T>::applyToDoublePoints(DoubleVector2 size){
 }
 
 template <typename T>
-bool Grid<T>::isValidPoint(IntVector2 point){
+bool Grid<T>::isValidPoint(IntVector2 point) const{
     if (point.x < 0 || point.y < 0)
         return false;
     if (point.x >= getWidth() || point.y >= getHeight())

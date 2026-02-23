@@ -3,6 +3,7 @@
 #include "graph.h"
 #include <unordered_map>
 #include <stdexcept>
+#include <format>
 
 #include <functional>
 
@@ -15,16 +16,16 @@ class EdgeGraph : public Graph<NodeT>{
         EdgeGraph(
             const std::vector<std::pair<NodeT, std::vector<Identifiable>>>& rawGraph,
             const std::unordered_map<std::pair<Identifiable, Identifiable>, SymEdgeT, PairIDHash>& symEdges,
-            const std::unordered_map<std::pair<Identifiable, Identifiable>, AsymEdgeT, PairIDHash>& asymEdges
+            const std::unordered_map<std::pair<Identifiable, Identifiable>, AsymEdgeT, AsymPairIDHash>& asymEdges
         );
         EdgeGraph(
             const std::vector<Node<NodeT>>& nodes, 
             const std::unordered_map<std::pair<Identifiable, Identifiable>, SymEdgeT, PairIDHash>& symEdges,
-            const std::unordered_map<std::pair<Identifiable, Identifiable>, AsymEdgeT, PairIDHash>& asymEdges
+            const std::unordered_map<std::pair<Identifiable, Identifiable>, AsymEdgeT, AsymPairIDHash>& asymEdges
         );
 
         void initializeSymEdges(const std::unordered_map<std::pair<Identifiable, Identifiable>, SymEdgeT, PairIDHash>& symEdges);
-        void initializeAsymEdges(const std::unordered_map<std::pair<Identifiable, Identifiable>, AsymEdgeT, PairIDHash>& asymEdges);
+        void initializeAsymEdges(const std::unordered_map<std::pair<Identifiable, Identifiable>, AsymEdgeT, AsymPairIDHash>& asymEdges);
 
         void separate(Identifiable id) override;
         
@@ -34,14 +35,14 @@ class EdgeGraph : public Graph<NodeT>{
         const AsymEdgeT& getAsymEdge(const NodeT& mainNode, const NodeT& neighbourNode) const;
 
         const std::unordered_map<std::pair<Identifiable, Identifiable>, SymEdgeT, PairIDHash>& getSymEdges() const;
-        const std::unordered_map<std::pair<Identifiable, Identifiable>, AsymEdgeT, PairIDHash>& getAsymEdges() const;
+        const std::unordered_map<std::pair<Identifiable, Identifiable>, AsymEdgeT, AsymPairIDHash>& getAsymEdges() const;
     protected:
     private:
         // Node order in pair doesn't matter
         std::unordered_map<std::pair<Identifiable, Identifiable>, SymEdgeT, PairIDHash> nodesToSymEdge;
 
         // Node order in pair matters
-        std::unordered_map<std::pair<Identifiable, Identifiable>, AsymEdgeT, PairIDHash> nodesToAsymEdge;
+        std::unordered_map<std::pair<Identifiable, Identifiable>, AsymEdgeT, AsymPairIDHash> nodesToAsymEdge;
 
         void initializeEmptySymEdges();
         void initializeEmptyAsymEdges();
@@ -57,7 +58,6 @@ void EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::initializeEmptySymEdges(){
     if (!nodesToSymEdge.empty()){
         throw std::logic_error("Sym edges already initialized.");
     }
-    int maxEdgeID = 0;
     for (Identifiable id1 : this->getIDs()){
         for (Identifiable id2 : this->getNode(id1).getNeighbours()){
             auto pair12 = std::make_pair(id1, id2);
@@ -65,8 +65,7 @@ void EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::initializeEmptySymEdges(){
             if (nodesToSymEdge.count(pair21)){
                 continue;
             }
-            nodesToSymEdge[pair12] = maxEdgeID;
-            maxEdgeID++;
+            nodesToSymEdge[pair12] = SymEdgeT();
         }
     }
 }
@@ -76,7 +75,6 @@ void EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::initializeEmptyAsymEdges(){
     if (!nodesToAsymEdge.empty()){
         throw std::logic_error("Asym edges already initialized.");
     }
-    int maxEdgeID = 0;
     for (Identifiable id1 : this->getIDs()){
         for (Identifiable id2 : this->getNode(id1).getNeighbours()){
             auto pair12 = std::make_pair(id1, id2);
@@ -84,8 +82,7 @@ void EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::initializeEmptyAsymEdges(){
             if (nodesToAsymEdge.count(pair21)){
                 continue;
             }
-            nodesToAsymEdge[pair12] = maxEdgeID;
-            maxEdgeID++;
+            nodesToAsymEdge[pair12] = AsymEdgeT();
         }
     }
 }
@@ -110,7 +107,7 @@ template<hasID NodeT, typename SymEdgeT, typename AsymEdgeT>
 EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::EdgeGraph(
     const std::vector<std::pair<NodeT, std::vector<Identifiable>>>& rawGraph,
     const std::unordered_map<std::pair<Identifiable, Identifiable>, SymEdgeT, PairIDHash>& symEdges,
-    const std::unordered_map<std::pair<Identifiable, Identifiable>, AsymEdgeT, PairIDHash>& asymEdges
+    const std::unordered_map<std::pair<Identifiable, Identifiable>, AsymEdgeT, AsymPairIDHash>& asymEdges
 )
 : Graph<NodeT>(rawGraph){
     initializeSymEdges(symEdges);
@@ -121,7 +118,7 @@ template <hasID NodeT, typename SymEdgeT, typename AsymEdgeT>
 EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::EdgeGraph(
     const std::vector<Node<NodeT>>& nodes,
     const std::unordered_map<std::pair<Identifiable, Identifiable>, SymEdgeT, PairIDHash>& symEdges,
-    const std::unordered_map<std::pair<Identifiable, Identifiable>, AsymEdgeT, PairIDHash>& asymEdges
+    const std::unordered_map<std::pair<Identifiable, Identifiable>, AsymEdgeT, AsymPairIDHash>& asymEdges
 )
 : Graph<NodeT>(nodes){
     initializeSymEdges(symEdges);
@@ -142,11 +139,11 @@ const std::unordered_map<std::pair<Identifiable, Identifiable>, SymEdgeT, PairID
 
 template <hasID NodeT, typename SymEdgeT, typename AsymEdgeT>
 void EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::initializeAsymEdges(
-const std::unordered_map<std::pair<Identifiable, Identifiable>, AsymEdgeT, PairIDHash>& edges){
+const std::unordered_map<std::pair<Identifiable, Identifiable>, AsymEdgeT, AsymPairIDHash>& edges){
     nodesToAsymEdge = edges;
     for (const auto& [nodePair, edge] : edges){
         if (!this->getNeighbours(nodePair.first).contains(nodePair.second)){
-            throw std::invalid_argument(std::format("Unexpected edge {} - {}", nodePair.first, nodePair.second));
+            throw std::invalid_argument(std::format("Unexpected edge {} - {}", nodePair.first.toString(), nodePair.second.toString()));
         }
     }
 }
@@ -183,11 +180,11 @@ const AsymEdgeT &EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::getAsymEdge(const NodeT&
 }
 
 template <hasID NodeT, typename SymEdgeT, typename AsymEdgeT>
-const std::unordered_map<std::pair<Identifiable, Identifiable>, SymEdgeT, PairIDHash> &EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::getSymEdges() const{
+const std::unordered_map<std::pair<Identifiable, Identifiable>, SymEdgeT, PairIDHash>& EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::getSymEdges() const{
     return nodesToSymEdge;
 }
 
 template <hasID NodeT, typename SymEdgeT, typename AsymEdgeT>
-const std::unordered_map<std::pair<Identifiable, Identifiable>, AsymEdgeT, PairIDHash> &EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::getAsymEdges() const{
+const std::unordered_map<std::pair<Identifiable, Identifiable>, AsymEdgeT, AsymPairIDHash>& EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::getAsymEdges() const{
     return nodesToAsymEdge;
 }

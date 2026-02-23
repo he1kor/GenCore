@@ -40,18 +40,28 @@ concept NumericContainer =
 template <typename T>
 class Matrix{
     public:
+        Matrix();
         Matrix(int width, int height);
         Matrix(const std::vector<std::vector<T>>& matrix);
         Matrix(std::initializer_list<std::initializer_list<T>> init);
 
         void set(int x, int y, const T& value);
-        const T get(int x, int y) const;
+        const T& get(int x, int y) const requires (!std::same_as<T, bool>);
+        const T& get(IntVector2 coords) const requires (!std::same_as<T, bool>);
+
+        bool get(int x, int y) const requires (std::same_as<T, bool>);
+        bool get(IntVector2 coords) const requires (std::same_as<T, bool>);
+
+        T& access(int x, int y) requires (!std::same_as<T, bool>);
+        T& access(IntVector2 coords) requires (!std::same_as<T, bool>);
+        
+
         int getWidth() const;
         int getHeight() const;
 
         Matrix(const Matrix& other);
 
-        bool isValidPoint(IntVector2 point2);
+        bool isValidPoint(IntVector2 point2) const;
 
         std::optional<const T&> tryGet(IntVector2 point2);
 
@@ -216,10 +226,15 @@ bool Matrix<T>::Iterator::operator==(const Iterator &other) const{
         this->y == other.y;
 }
 
+template <typename T>
+inline Matrix<T>::Matrix() : width(0), height(0){}
 
-template <typename T> 
-Matrix<T>::Matrix(int width, int height) : width(width), height(height){
-    matrix = std::vector<std::vector<T>>(height, std::vector<T>(width));
+template <typename T>
+Matrix<T>::Matrix(int width, int height) : width(width), height(height)
+{
+    matrix = std::vector<std::vector<T>>(
+        height, 
+        std::vector<T>(width, T{}));
 }
 
 template <typename T>
@@ -268,8 +283,45 @@ void Matrix<T>::set(int x, int y, const T &value){
 }
 
 template <typename T>
-const T Matrix<T>::get(int x, int y) const{
+const T& Matrix<T>::get(int x, int y) const
+requires (!std::same_as<T, bool>)
+{
     return matrix.at(y).at(x);
+}
+
+template <typename T>
+const T& Matrix<T>::get(IntVector2 coords) const
+requires (!std::same_as<T, bool>)
+{
+    return matrix.at(coords.y).at(coords.x);
+}
+
+template <typename T>
+bool Matrix<T>::get(int x, int y) const 
+requires (std::same_as<T, bool>)
+{
+    return matrix.at(y).at(x);
+}
+
+template <typename T>
+bool Matrix<T>::get(IntVector2 coords) const 
+requires (std::same_as<T, bool>)
+{
+    return matrix.at(coords.y).at(coords.x);
+}
+
+template <typename T>
+T &Matrix<T>::access(int x, int y)
+requires (!std::same_as<T, bool>)
+{
+    return matrix.at(y).at(x);
+}
+
+template <typename T>
+inline T &Matrix<T>::access(IntVector2 coords)
+requires (!std::same_as<T, bool>)
+{
+    return matrix.at(coords.y).at(coords.x);
 }
 
 template <typename T>
@@ -280,7 +332,7 @@ Matrix<T>::Matrix(const Matrix& other){
 }
 
 template <typename T>
-bool Matrix<T>::isValidPoint(IntVector2 point){
+bool Matrix<T>::isValidPoint(IntVector2 point) const{
     if (point.x < 0 || point.y < 0)
         return false;
     if (point.x >= getWidth() || point.y >= getHeight())

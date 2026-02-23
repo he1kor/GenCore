@@ -11,7 +11,7 @@ class Identifiable{
     public:
         static inline const int nullID = -1;
         Identifiable(int id);
-        Identifiable() = default;
+        Identifiable() : id(nullID){};
         virtual ~Identifiable() = default;
         int getID() const;
         bool operator==(const Identifiable& other) const;
@@ -21,6 +21,7 @@ class Identifiable{
         bool operator<=(const Identifiable& other) const;
         
         bool operator!=(const Identifiable& other) const;
+        std::string toString() const;
 };
 
 template<typename T>
@@ -46,5 +47,11 @@ struct PairIDHash {
             Identifiable(std::min(pair.first.getID(), pair.second.getID())),
             Identifiable(std::max(pair.first.getID(), pair.second.getID()))
         );
+    }
+};
+
+struct AsymPairIDHash {
+    std::size_t operator()(const std::pair<Identifiable, Identifiable>& e) const {
+        return std::hash<int>{}(e.first.getID()) ^ (std::hash<int>{}(e.second.getID()) << 1);
     }
 };

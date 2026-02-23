@@ -45,6 +45,10 @@ struct IntVector2 {
     IntVector2 operator+(const IntVector2& other) const;
     IntVector2 operator-(const IntVector2& other) const;
     bool operator==(const IntVector2& other) const;
+
+    std::string toString() const{
+        return "{" + std::to_string(x) + "; " + std::to_string(y) + "}";
+    }
 };
 
 std::ostream& operator<<(std::ostream& os, const IntVector2& vec);

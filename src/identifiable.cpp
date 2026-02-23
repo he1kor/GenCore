@@ -1,4 +1,5 @@
 #include "identifiable.h"
+#include <string>
 
 Identifiable::Identifiable(int id) : id{id}{}
 
@@ -8,6 +9,10 @@ int Identifiable::getID() const{
 
 bool Identifiable::operator!=(const Identifiable &other) const{
     return !(*this == other);
+}
+
+std::string Identifiable::toString() const{
+    return std::to_string(id);
 }
 
 bool Identifiable::operator==(const Identifiable &other) const{
