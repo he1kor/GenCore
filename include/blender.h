@@ -186,9 +186,9 @@ inline std::unordered_map<Identifiable, Matrix<double>, IDHash> blendConnections
                     }
                 );
                 result[id].set(x, y, tileZoneInfluence.get(x, y).at(id) / sum);
-                if (id.getID() == 4){
-                    std::cout << std::format("Result at [{}; {}] is {} for influence {}, sum calculated was: {}\n", x, y, result[id].get(x, y), tileZoneInfluence.get(x, y).at(id), sum);
-                }
+                // if (id.getID() == 4){
+                    // std::cout << std::format("Result at [{}; {}] is {} for influence {}, sum calculated was: {}\n", x, y, result[id].get(x, y), tileZoneInfluence.get(x, y).at(id), sum);
+                // }
             }
         }
     }

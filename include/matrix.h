@@ -134,26 +134,27 @@ class Matrix{
             const WeightContainerType& weights
         );
 
+
         template <typename Container>
         requires MatrixContainer<Container, T>
-        static Matrix<double> normalizedAverage(Container& container);
+        static Matrix<double> normalizedAverage(Container &matrices, std::optional<std::reference_wrapper<const Matrix<double>>> mask = std::nullopt);
 
         template <typename MatrixContainerType, typename WeightContainerType>
         requires MatrixContainer<MatrixContainerType, T> &&
                 NumericContainer<WeightContainerType>
         static Matrix<double> normalizedAverage(
             const MatrixContainerType& matrices,
-            const WeightContainerType& weights
+            const WeightContainerType& weights,
+            std::optional<std::reference_wrapper<const Matrix<double>>> mask = std::nullopt
         );
 
         template <typename Predicate>
         requires std::predicate<Predicate, T>
         static Matrix<bool> mapToBinary(const Matrix<T>& matrix, Predicate predicate);
 
-    
-    template<typename U = T>
-    requires Sortable<U> && HasHash<U>
-    void normalizeToPercentiles();
+        template <typename U = T>
+            requires Sortable<U> && HasHash<U>
+        void normalizeToPercentiles(std::optional<std::reference_wrapper<const Matrix<double>>> mask = std::nullopt);
 
         class Iterator{
             private:
@@ -656,10 +657,11 @@ requires MatrixContainer<MatrixContainerType, T> &&
         NumericContainer<WeightContainerType>
 inline Matrix<double> Matrix<T>::normalizedAverage(
     const MatrixContainerType& matrices,
-    const WeightContainerType& weights
+    const WeightContainerType& weights,
+    std::optional<std::reference_wrapper<const Matrix<double>>> mask
 ){
     Matrix<double> result = average(matrices, weights);
-    result.normalizeToPercentiles();
+    result.normalizeToPercentiles(mask);
     return result;
 }
 
@@ -681,25 +683,32 @@ inline Matrix<bool> Matrix<T>::mapToBinary(const Matrix<T> &matrix, Predicate pr
     return result;
 }
 
+
 template <typename T>
 template <typename Container>
 requires MatrixContainer<Container, T>
-inline Matrix<double> Matrix<T>::normalizedAverage(Container &matrices){
+inline Matrix<double> Matrix<T>::normalizedAverage(Container &matrices, std::optional<std::reference_wrapper<const Matrix<double>>> mask){
     Matrix<double> result = average(matrices);
-    result.normalizeToPercentiles();
+    result.normalizeToPercentiles(mask);
     return result;
 }
 
 template <typename T>
 template <typename U>
     requires Sortable<U> && HasHash<U>
-void Matrix<T>::normalizeToPercentiles()
+void Matrix<T>::normalizeToPercentiles(std::optional<std::reference_wrapper<const Matrix<double>>> mask)
 {
     std::unordered_map<U, std::vector<std::pair<int, int>>> valuePositions;
     
+    int total = 0;
     for (int y = 0; y < height; ++y) {
         for (int x = 0; x < width; ++x) {
-            valuePositions[matrix[y][x]].emplace_back(x, y);
+            if (mask.has_value() && mask.value().get().get(x, y) <= 0.00001) {
+                matrix[y][x] = 0.0;
+                continue;
+            }
+            total++;
+            valuePositions[matrix[y][x] * (mask.has_value() ? mask.value().get().get(x,y) : 1)].emplace_back(x, y);
         }
     }
     
@@ -711,7 +720,6 @@ void Matrix<T>::normalizeToPercentiles()
     
     std::sort(uniqueValues.begin(), uniqueValues.end());
     int cumulativeCount = 0;
-    int total = width * height;
     
     for (const auto& value : uniqueValues) {
         const auto& positions = valuePositions[value];
