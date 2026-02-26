@@ -55,7 +55,7 @@ class Matrix{
         T& access(int x, int y) requires (!std::same_as<T, bool>);
         T& access(IntVector2 coords) requires (!std::same_as<T, bool>);
         
-
+        IntVector2 getDimension();
         int getWidth() const;
         int getHeight() const;
 
@@ -585,18 +585,15 @@ inline Matrix<bool>& Matrix<T>::operator-=(const Matrix<bool>& other) {
     return *this;
 }
 
-
-
-
-
-
-
-
-
-
+template <typename T>
+IntVector2 Matrix<T>::getDimension()
+{
+    return {width, height};
+}
 
 template <typename T>
-int Matrix<T>::getWidth() const{
+int Matrix<T>::getWidth() const
+{
     return width;
 }
 
