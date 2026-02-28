@@ -15,9 +15,9 @@ namespace tiles{
 
     struct PassParams{
         size_t minPassWidth = 0;
-        size_t maxPassWidth = 100;
+        size_t maxPassWidth = 0;
         size_t minWallLength = 0;
-        size_t maxWallLength = 100;
+        size_t maxWallLength = 200;
     };
 
     class Border{

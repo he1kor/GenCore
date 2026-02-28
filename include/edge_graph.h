@@ -33,6 +33,10 @@ class EdgeGraph : public Graph<NodeT>{
 
         const SymEdgeT& getSymEdge(const NodeT& mainNode, const NodeT& neighbourNode) const;
         const AsymEdgeT& getAsymEdge(const NodeT& mainNode, const NodeT& neighbourNode) const;
+        const SymEdgeT& getSymEdge(const Identifiable& first, const Identifiable& second) const;
+        const AsymEdgeT& getAsymEdge(const Identifiable& mainID, const Identifiable& neighbourID) const;
+        std::optional<SymEdgeT> tryGetSymEdge(const Identifiable& first, const Identifiable& second) const;
+        std::optional<AsymEdgeT> tryGetAsymEdge(const Identifiable& mainID, const Identifiable& neighbourID) const;
 
         const std::unordered_map<std::pair<Identifiable, Identifiable>, SymEdgeT, PairIDHash>& getSymEdges() const;
         const std::unordered_map<std::pair<Identifiable, Identifiable>, AsymEdgeT, AsymPairIDHash>& getAsymEdges() const;
@@ -176,7 +180,37 @@ const SymEdgeT &EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::getSymEdge(const NodeT& n
 
 template <hasID NodeT, typename SymEdgeT, typename AsymEdgeT>
 const AsymEdgeT &EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::getAsymEdge(const NodeT& mainNode, const NodeT& neighbourNode) const{
-    return nodesToAsymEdge.at(mainNode, neighbourNode);
+    return nodesToAsymEdge.at({mainNode, neighbourNode});
+}
+
+template <hasID NodeT, typename SymEdgeT, typename AsymEdgeT>
+inline const SymEdgeT &EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::getSymEdge(const Identifiable &first, const Identifiable &second) const
+{
+    return nodesToSymEdge.at(PairIDHash::normalize({first, second}));
+}
+
+template <hasID NodeT, typename SymEdgeT, typename AsymEdgeT>
+inline const AsymEdgeT &EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::getAsymEdge(const Identifiable &mainID, const Identifiable &neighbourID) const
+{
+    return nodesToAsymEdge.at({mainID, neighbourID});
+}
+
+template <hasID NodeT, typename SymEdgeT, typename AsymEdgeT>
+inline std::optional<SymEdgeT> EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::tryGetSymEdge(const Identifiable &first, const Identifiable &second) const
+{
+    if (!nodesToSymEdge.contains(PairIDHash::normalize({first, second}))){
+        return std::nullopt;
+    }
+    return nodesToSymEdge.at(PairIDHash::normalize({first, second}));
+}
+
+template <hasID NodeT, typename SymEdgeT, typename AsymEdgeT>
+inline std::optional<AsymEdgeT> EdgeGraph<NodeT, SymEdgeT, AsymEdgeT>::tryGetAsymEdge(const Identifiable &mainID, const Identifiable &neighbourID) const
+{
+    if (!nodesToSymEdge.contains({mainID, neighbourID})){
+        return std::nullopt;
+    }
+    return nodesToSymEdge.at({mainID, neighbourID});
 }
 
 template <hasID NodeT, typename SymEdgeT, typename AsymEdgeT>

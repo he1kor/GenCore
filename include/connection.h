@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <memory>
 #include <type_traits>
+#include <border.h>
 
 class Blendable{
 public:
@@ -28,4 +29,9 @@ class BasicConnection : public Blendable, public ResourceGuarantor, public Intak
 public:
     BasicConnection() : Blendable(0), Intakable(0), ResourceGuarantor(0, 0.0){};
     BasicConnection(int blendableDistance, int intakeDistance, int areaGuaranteed, double bonusValue) : Blendable(blendableDistance), Intakable(intakeDistance), ResourceGuarantor(areaGuaranteed, bonusValue){};
-}; 
+};
+
+struct SymConnection : public tiles::PassParams{
+    SymConnection() : tiles::PassParams(){};
+    SymConnection(const tiles::PassParams& params) : tiles::PassParams(params){};
+};
