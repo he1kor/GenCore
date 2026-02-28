@@ -131,7 +131,7 @@ const std::unordered_map<std::pair<Identifiable, Identifiable>, SymEdgeT, PairID
     nodesToSymEdge.reserve(edges.size() * 2);
     for (const auto& [nodePair, edge] : edges){
         if (!this->getNeighbours(nodePair.first).contains(nodePair.second)){
-            throw std::invalid_argument(std::format("Unexpected edge {} - {}", nodePair.first, nodePair.second));
+            throw std::invalid_argument(std::format("Unexpected edge {} - {}", nodePair.first.toString(), nodePair.second.toString()));
         }
         nodesToSymEdge[PairIDHash::normalize(nodePair)] = edge;
     }
