@@ -24,19 +24,19 @@ class RadialNode : public Magnetic, public Radial, public Identifiable{
 
 template <typename Resource>
 struct ResourceData{
-    std::vector<NoiseOctaveParam> octaves;
+    std::vector<double> octaveWeights;
     std::vector<ResourceMapping<Resource>> resources;
 };
 
 template <typename Resource>
 class ResourceRadialNode : public RadialNode, public ResourceData<Resource>{
     public: 
-        ResourceRadialNode() : RadialNode(), ResourceData<Resource>{.octaves = {}, .resources = {}}{};
+        ResourceRadialNode() : RadialNode(), ResourceData<Resource>{.octaveWeights = {}, .resources = {}}{};
         ResourceRadialNode(
             int id,
             double radius,
             double susceptibility,
-            const std::vector<NoiseOctaveParam>& octaves,
+            const std::vector<double>& octaveWeights,
             const std::vector<ResourceMapping<Resource>>& resources
-        ) : RadialNode(id, radius, susceptibility), ResourceData<Resource>{octaves, resources}{};
+        ) : RadialNode(id, radius, susceptibility), ResourceData<Resource>{octaveWeights, resources}{};
 };

@@ -20,7 +20,6 @@ struct ResourceMapping{
 template <typename T>
 class ResourceGenerator{
 private:
-    std::vector<NoiseOctaveParam> octaveParams = {};
     std::vector<std::pair<double, double>> resourceThresholds = {}; // first value is minimal percentile, second is maximal to create this resource;
     std::optional<std::vector<T>> resourceMappings = std::nullopt;
     IntVector2 dimension;
@@ -28,13 +27,15 @@ private:
     bool initialized = false;
 public:
     void setup(
-        const std::vector<NoiseOctaveParam>& octaves,
+        const std::vector<Matrix<double>>& octaves,
+        const std::vector<double>& octaveWeights,
         const std::vector<std::pair<double, double>>& resourceThresholds,
         IntVector2 dimension,
         std::optional<std::reference_wrapper<Matrix<double>>> mask = std::nullopt
     );
     void setup(
-        const std::vector<NoiseOctaveParam> &octaves,
+        const std::vector<Matrix<double>> &octaves,
+        const std::vector<double>& octaveWeights,
         const std::vector<ResourceMapping<T>> &resources,
         IntVector2 dimension,
         std::optional<std::reference_wrapper<Matrix<double>>> mask = std::nullopt
@@ -42,34 +43,32 @@ public:
 
     ResourceGenerator(){};
 
-    void regenerate(std::optional<std::reference_wrapper<Matrix<double>>> mask);
     Matrix<T> generateResourcesMap();
     Matrix<bool> generateResource(size_t resourceThresholdIndex);
     std::vector<Matrix<bool>> generateResources();
-    const Matrix<double>& getNoise() const {return noiseMap;};
+    void regenerate(const std::vector<Matrix<double>> &octaves, const std::vector<double>& octaveWeights, std::optional<std::reference_wrapper<Matrix<double>>> mask);
+    const Matrix<double> &getNoise() const { return noiseMap; };
     IntVector2 getDimension() const {return dimension;};
     const std::vector<T>& getResourceMappings() const {return resourceMappings.value();}
     const std::vector<std::pair<double, double>>& getResourceThresholds() const {return resourceThresholds;}
 
 private:
-    void initNoise(const std::vector<NoiseOctaveParam> &octaves, IntVector2 dimensions, std::optional<std::reference_wrapper<Matrix<double>>> mask);
+    void initNoise(const std::vector<Matrix<double>> &octaves, const std::vector<double>& octaveWeights, IntVector2 dimensions, std::optional<std::reference_wrapper<Matrix<double>>> mask);
 };
 
 
 template <typename T>
-inline void ResourceGenerator<T>::setup(const std::vector<NoiseOctaveParam> &octaves, const std::vector<std::pair<double, double>> &resourceThresholds, IntVector2 dimension, std::optional<std::reference_wrapper<Matrix<double>>> mask)
+inline void ResourceGenerator<T>::setup(const std::vector<Matrix<double>> &octaves, const std::vector<double>& octaveWeights, const std::vector<std::pair<double, double>> &resourceThresholds, IntVector2 dimension, std::optional<std::reference_wrapper<Matrix<double>>> mask)
 {
-    octaveParams = octaves;
     this->dimension = dimension;
     this->resourceThresholds = resourceThresholds;
     resourceMappings = std::nullopt;
-    regenerate(mask);
+    regenerate(octaves, mask);
 }
 
 template <typename T>
-inline void ResourceGenerator<T>::setup(const std::vector<NoiseOctaveParam>& octaves, const std::vector<ResourceMapping<T>>& resources, IntVector2 dimension, std::optional<std::reference_wrapper<Matrix<double>>> mask)
+inline void ResourceGenerator<T>::setup(const std::vector<Matrix<double>>& octaves, const std::vector<double>& octaveWeights, const std::vector<ResourceMapping<T>>& resources, IntVector2 dimension, std::optional<std::reference_wrapper<Matrix<double>>> mask)
 {
-    octaveParams = octaves;
     this->dimension = dimension;
     resourceThresholds.reserve(resources.size());
     resourceMappings = std::vector<T>();
@@ -78,7 +77,7 @@ inline void ResourceGenerator<T>::setup(const std::vector<NoiseOctaveParam>& oct
         resourceMappings->push_back(resource.resource);
         resourceThresholds.push_back({resource.minimalThreshold, resource.maximalThreshold});
     }
-    regenerate(mask);
+    regenerate(octaves, octaveWeights, mask);
 }
 
 
@@ -137,21 +136,18 @@ inline std::vector<Matrix<bool>> ResourceGenerator<T>::generateResources()
 }
 
 template <typename T>
-inline void ResourceGenerator<T>::regenerate(std::optional<std::reference_wrapper<Matrix<double>>> mask)
+inline void ResourceGenerator<T>::regenerate(const std::vector<Matrix<double>> &octaves, const std::vector<double>& octaveWeights, std::optional<std::reference_wrapper<Matrix<double>>> mask)
 {
-    initNoise(octaveParams, dimension, mask);
+    initNoise(octaves, octaveWeights, dimension, mask);
 }
 
 template <typename T>
-inline void ResourceGenerator<T>::initNoise(const std::vector<NoiseOctaveParam> &octaves, IntVector2 dimensions, std::optional<std::reference_wrapper<Matrix<double>>> mask){
+inline void ResourceGenerator<T>::initNoise(const std::vector<Matrix<double>>& octaves, const std::vector<double>& octaveWeights, IntVector2 dimensions, std::optional<std::reference_wrapper<Matrix<double>>> mask){
     std::vector<Matrix<double>> noises;
-    std::vector<double> weights;
-    noises.reserve(octaveParams.size());
-    weights.reserve(octaveParams.size());
-    for (const NoiseOctaveParam& octave : octaves){
-        noises.push_back(EllipticalBlobNoise(dimensions.x, dimensions.y, octave.minimalBlob, octave.maximalBlob).generate());
-        weights.push_back(octave.weight);
+    noises.reserve(octaves.size());
+    for (const Matrix<double>& octave : octaves){
+        noises.push_back(octave);
     }
-    noiseMap = Matrix<double>::normalizedAverage(noises, weights, mask);
+    noiseMap = Matrix<double>::normalizedAverage(noises, octaveWeights, mask);
     initialized = true;
 }
