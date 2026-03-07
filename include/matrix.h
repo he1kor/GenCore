@@ -148,9 +148,11 @@ class Matrix{
             std::optional<std::reference_wrapper<const Matrix<double>>> mask = std::nullopt
         );
 
+        void applyByMaskRef(const Matrix<bool> &mask, void (*visitor)(T &, bool));
+
         template <typename Predicate>
         requires std::predicate<Predicate, T>
-        static Matrix<bool> mapToBinary(const Matrix<T>& matrix, Predicate predicate);
+        Matrix<bool> mapToBinary(Predicate predicate);
 
         template <typename U = T>
             requires Sortable<U> && HasHash<U>
@@ -663,17 +665,28 @@ inline Matrix<double> Matrix<T>::normalizedAverage(
 }
 
 template <typename T>
+void Matrix<T>::applyByMaskRef(const Matrix<bool>& mask, void (*visitor)(T&, bool)) {
+    if (mask.getWidth() != width || mask.getHeight() != height) {
+        throw std::invalid_argument("Matrix::applyByMaskRef: mask dimension mismatch");
+    }
+    
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            visitor(matrix[y][x], mask.get(x, y));
+        }
+    }
+}
+
+
+template <typename T>
 template <typename Predicate>
 requires std::predicate<Predicate, T>
-inline Matrix<bool> Matrix<T>::mapToBinary(const Matrix<T> &matrix, Predicate predicate){
-    int width = matrix.getWidth();
-    int height = matrix.getHeight();
+inline Matrix<bool> Matrix<T>::mapToBinary(Predicate predicate){
     Matrix<bool> result(width, height);
     
     for (int y = 0; y < height; ++y) {
         for (int x = 0; x < width; ++x) {
-            T value = matrix.get(x, y);
-            result.set(x, y, predicate(value));
+            result.set(x, y, predicate(get(x, y)));
         }
     }
     

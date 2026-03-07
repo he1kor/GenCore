@@ -9,6 +9,13 @@
 #include <iostream>
 
 namespace morphology{
+    
+    static const Matrix<bool> fullKernel3x3 = {
+        {1, 1, 1},
+        {1, 1, 1},
+        {1, 1, 1}
+    };
+
     void placeKernel(Matrix<bool>& grid, typename Matrix<bool>::Iterator it, const Matrix<bool>& kernel);
     bool canErodeKernel(Matrix<bool>& grid, typename Matrix<bool>::Iterator it, const Matrix<bool>& kernel);
     void dilate(Matrix<bool>& boolMap, const Matrix<bool>& kernel);
@@ -19,7 +26,7 @@ namespace morphology{
     template <typename T>
     void dilate(Grid<T>& grid, Identifiable tileToApply, const Matrix<bool>& kernel);
 
-    template <typename T>
+    template <typename T>   
     void close(Grid<T>& grid, Identifiable tileToApply, const Matrix<bool>& kernel);
 
     template <typename T>

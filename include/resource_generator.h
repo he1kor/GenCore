@@ -116,7 +116,7 @@ inline Matrix<bool> ResourceGenerator<T>::generateResource(size_t resourceThresh
     }
     
     auto& threshold = resourceThresholds[resourceThresholdIndex];
-    return Matrix<double>::mapToBinary(noiseMap, [threshold](double h) { 
+    return noiseMap.mapToBinary([threshold](double h) { 
         return h >= threshold.first && h < threshold.second;
     });
 }
