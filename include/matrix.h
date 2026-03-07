@@ -148,7 +148,7 @@ class Matrix{
             std::optional<std::reference_wrapper<const Matrix<double>>> mask = std::nullopt
         );
 
-        void applyByMaskRef(const Matrix<bool> &mask, void (*visitor)(T &, bool));
+        void applyByMask(const Matrix<bool> &mask, void (*visitor)(T &, bool));
 
         template <typename Predicate>
         requires std::predicate<Predicate, T>
@@ -665,9 +665,9 @@ inline Matrix<double> Matrix<T>::normalizedAverage(
 }
 
 template <typename T>
-void Matrix<T>::applyByMaskRef(const Matrix<bool>& mask, void (*visitor)(T&, bool)) {
+void Matrix<T>::applyByMask(const Matrix<bool>& mask, void (*visitor)(T&, bool)) {
     if (mask.getWidth() != width || mask.getHeight() != height) {
-        throw std::invalid_argument("Matrix::applyByMaskRef: mask dimension mismatch");
+        throw std::invalid_argument("Matrix::applyByMask: mask dimension mismatch");
     }
     
     for (int y = 0; y < height; ++y) {
