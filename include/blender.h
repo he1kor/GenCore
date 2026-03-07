@@ -108,10 +108,13 @@ inline std::unordered_map<Identifiable, Matrix<double>, IDHash> blendConnections
     for (auto& [id, matrix] : result){    
         for (size_t y = 0; y < grid.getHeight(); ++y){
             for (size_t x = 0; x < grid.getWidth(); ++x){
-                if (matrix.get(x, y) == 1.0) tryAddToBFSBlendQueue(bfsBlendQueue, IntVector2(x+1, y), id, result, asymEdges);
-                if (matrix.get(x, y) == 1.0) tryAddToBFSBlendQueue(bfsBlendQueue, IntVector2(x-1, y), id, result, asymEdges);
-                if (matrix.get(x, y) == 1.0) tryAddToBFSBlendQueue(bfsBlendQueue, IntVector2(x, y+1), id, result, asymEdges);
-                if (matrix.get(x, y) == 1.0) tryAddToBFSBlendQueue(bfsBlendQueue, IntVector2(x, y-1), id, result, asymEdges);
+                if (matrix.get(x, y) <= 0.001){
+                    continue;
+                }
+                tryAddToBFSBlendQueue(bfsBlendQueue, IntVector2(x+1, y), id, result, asymEdges);
+                tryAddToBFSBlendQueue(bfsBlendQueue, IntVector2(x-1, y), id, result, asymEdges);
+                tryAddToBFSBlendQueue(bfsBlendQueue, IntVector2(x, y+1), id, result, asymEdges);
+                tryAddToBFSBlendQueue(bfsBlendQueue, IntVector2(x, y-1), id, result, asymEdges);
             }
         }
     }

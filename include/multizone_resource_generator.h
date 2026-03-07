@@ -81,8 +81,11 @@ double MultizoneResourceGenerator<T>::getAverageNoiseValue(IntVector2 point)
     double sumWeight = 0.0;
     for (auto& [id, resourceGenerator] : zones){
         double weight = masks.at(id).get(point);
-        result += weight * resourceGenerator.getNoise().get(point);
         sumWeight += weight;
+    }
+    for (auto& [id, resourceGenerator] : zones){
+        double weight = masks.at(id).get(point);
+        result += (weight / sumWeight) * resourceGenerator.getNoise().get(point);
     }
     return result;
 }
