@@ -11,11 +11,13 @@
 #include "connection.h"
 #include "border.h"
 
-template <typename T, typename SyncEdgeT>
-std::unordered_map<Identifiable, Matrix<double>, IDHash> blendConnections(const Grid<T>& grid, const EdgeGraph<T, SyncEdgeT, BasicConnection>& mapTemplate);
+struct ZoneMasks{
+    // Used to determine increased/decreased power of tiles, for example for resources.
+    std::unordered_map<Identifiable, Matrix<double>, IDHash> bonusMask;
 
-template <typename T>
-std::unordered_map<Identifiable, Matrix<double>, IDHash> buildZoneMasks(const Grid<T>& grid);
+     // Used to determine how much imapct this zone has on the tile. Each tile is supposed to have 0.0 or 1.0 sum of all zones influences.
+    std::unordered_map<Identifiable, Matrix<double>, IDHash> influenceMask;
+};
 
 struct BFSIntakeElement{
     IntVector2 coords;
@@ -31,12 +33,36 @@ struct BFSBlendElement{
     int iterationsLeft;
 };
 
+struct BFSGuarantorElement{
+    IntVector2 coords;
+    Identifiable zoneApplied;
+    Identifiable neighbourStarted;
+    double weightSpread;
+};
+
 template <typename T, typename SyncEdgeT>
-inline std::unordered_map<Identifiable, Matrix<double>, IDHash> blendConnections(const Grid<T>& grid, const EdgeGraph<T, SyncEdgeT, BasicConnection>& mapTemplate)
+ZoneMasks blendConnections(const Grid<T>& grid, const EdgeGraph<T, SyncEdgeT, BasicConnection>& mapTemplate);
+
+void tryAddToBFSBlendQueue(
+        std::queue<BFSBlendElement>& bfsBlendQueue,
+        IntVector2 coords,
+        Identifiable spreadingZone,
+        const std::unordered_map<Identifiable, Matrix<double>, IDHash>& matrices,
+        const std::unordered_map<std::pair<Identifiable, Identifiable>, BasicConnection, AsymPairIDHash>& asymEdges
+    );
+
+template <typename T>
+std::unordered_map<Identifiable, Matrix<double>, IDHash> buildZoneMasks(const Grid<T>& grid);
+
+
+
+template <typename T, typename SyncEdgeT>
+inline ZoneMasks blendConnections(const Grid<T>& grid, const EdgeGraph<T, SyncEdgeT, BasicConnection>& mapTemplate)
 {
-    std::unordered_map<Identifiable, Matrix<double>, IDHash> result = buildZoneMasks(grid);
+    std::unordered_map<Identifiable, Matrix<double>, IDHash> zoneInfluence = buildZoneMasks(grid);
+
     std::unordered_map<std::pair<Identifiable, Identifiable>, std::vector<tiles::Border>, PairIDHash> borders = tiles::Border::getAllBorders(grid);
-    std::queue<BFSIntakeElement> bfsQueue;
+    std::queue<BFSIntakeElement> bfsIntakeQueue;
     const auto& asymEdges = mapTemplate.getAsymEdges();
     for (auto& [idPair, asymEdgeParams] : asymEdges){
         auto reversedIdPair = std::make_pair(idPair.second, idPair.first);
@@ -51,7 +77,7 @@ inline std::unordered_map<Identifiable, Matrix<double>, IDHash> blendConnections
         for (tiles::Border border : it->second){
             bool leftOriented = grid.getTileID(border.getLeft(0)) == idPair.first;
             for (tiles::Border::Segment segment : border.getSegments()){
-                bfsQueue.push({
+                bfsIntakeQueue.push({
                     leftOriented? segment.getLeftPos() : segment.getRightPos(),
                     idPair.first,
                     idPair.second,
@@ -60,66 +86,139 @@ inline std::unordered_map<Identifiable, Matrix<double>, IDHash> blendConnections
             }
         }
     }
-    while (!bfsQueue.empty()){
-        BFSIntakeElement bfsElement = bfsQueue.front();
-        bfsQueue.pop();
-        if (!result.contains(bfsElement.intakingZone) || !result.contains(bfsElement.spreadingZone)){
+
+    while (!bfsIntakeQueue.empty()){
+        BFSIntakeElement bfsElement = bfsIntakeQueue.front();
+        bfsIntakeQueue.pop();
+        if (!zoneInfluence.contains(bfsElement.intakingZone) || !zoneInfluence.contains(bfsElement.spreadingZone)){
             throw std::logic_error(std::format("NO ZONE ID FOUND: {} or {}", bfsElement.intakingZone.toString(), bfsElement.spreadingZone.toString()));
         }
         if (
             !grid.isValidPoint(bfsElement.coords)
-            || result[bfsElement.intakingZone].get(bfsElement.coords) != 1.0
+            || zoneInfluence.at(bfsElement.intakingZone).get(bfsElement.coords) != 1.0
             || bfsElement.iterationsLeft < 1
         ){
             continue;
         }
-        result[bfsElement.intakingZone].set(bfsElement.coords.x, bfsElement.coords.y, 0.0);
-        result[bfsElement.spreadingZone].set(bfsElement.coords.x, bfsElement.coords.y, 1.0);
-        bfsQueue.push({
+        zoneInfluence.at(bfsElement.intakingZone).set(bfsElement.coords.x, bfsElement.coords.y, 0.0);
+        zoneInfluence.at(bfsElement.spreadingZone).set(bfsElement.coords.x, bfsElement.coords.y, 1.0);
+        bfsIntakeQueue.push({
             bfsElement.coords.x+1, bfsElement.coords.y,
             bfsElement.intakingZone,
             bfsElement.spreadingZone,
             bfsElement.iterationsLeft - 1
         });
-        bfsQueue.push({
+        bfsIntakeQueue.push({
             bfsElement.coords.x-1, bfsElement.coords.y,
             bfsElement.intakingZone,
             bfsElement.spreadingZone,
             bfsElement.iterationsLeft - 1
         });
-        bfsQueue.push({
+        bfsIntakeQueue.push({
             bfsElement.coords.x, bfsElement.coords.y+1,
             bfsElement.intakingZone,
             bfsElement.spreadingZone,
             bfsElement.iterationsLeft - 1
         });
-        bfsQueue.push({ 
+        bfsIntakeQueue.push({ 
             bfsElement.coords.x, bfsElement.coords.y-1,
             bfsElement.intakingZone,
             bfsElement.spreadingZone,
             bfsElement.iterationsLeft - 1
         });
     }
+    // Intake end, starting guarantor
 
-    // Intake end, starting blend
+    std::unordered_map<Identifiable, Matrix<double>, IDHash> zoneBonuses;
+    for (Identifiable zone : mapTemplate.getIDs()){
+        zoneBonuses[zone] = Matrix(grid.getWidth(), grid.getHeight(), 0.0);
 
+    }
+    std::queue<BFSGuarantorElement> bfsGuarantorQueue;
+    std::unordered_map<std::pair<Identifiable, Identifiable>, int, AsymPairIDHash> areaLeft;
+
+    for (auto& [idPair, asymEdgeParams] : asymEdges){
+        areaLeft[idPair] = asymEdgeParams.areaGuaranteed;
+    }
+
+    for (auto& [id, matrix] : zoneInfluence){
+        for (size_t y = 0; y < grid.getHeight(); ++y){
+            for (size_t x = 0; x < grid.getWidth(); ++x){
+                if (zoneInfluence.at(id).get(x, y) < 1.0){
+                    continue;
+                }
+                tryAddToBFSGuarantorQueue(bfsGuarantorQueue, IntVector2(x+1, y), id, zoneBonuses, zoneInfluence, asymEdges);
+                tryAddToBFSGuarantorQueue(bfsGuarantorQueue, IntVector2(x-1, y), id, zoneBonuses, zoneInfluence, asymEdges);
+                tryAddToBFSGuarantorQueue(bfsGuarantorQueue, IntVector2(x, y+1), id, zoneBonuses, zoneInfluence, asymEdges);
+                tryAddToBFSGuarantorQueue(bfsGuarantorQueue, IntVector2(x, y-1), id, zoneBonuses, zoneInfluence, asymEdges);
+            }
+        }
+    }
+
+    while (!bfsGuarantorQueue.empty()){
+        BFSGuarantorElement bfsElement = bfsGuarantorQueue.front();
+        bfsGuarantorQueue.pop();
+
+        if (
+            !grid.isValidPoint(bfsElement.coords)
+            || zoneInfluence.at(bfsElement.zoneApplied).get(bfsElement.coords) <= 0.0
+            || zoneBonuses.at(bfsElement.zoneApplied).get(bfsElement.coords) >= bfsElement.weightSpread
+            || areaLeft.at(std::make_pair(bfsElement.zoneApplied, bfsElement.neighbourStarted)) < 1
+        ){
+            continue;
+        }
+
+        zoneBonuses.at(bfsElement.zoneApplied).access(bfsElement.coords) += bfsElement.weightSpread;
+        areaLeft.at(std::make_pair(bfsElement.zoneApplied, bfsElement.neighbourStarted))--;
+
+        bfsGuarantorQueue.push(BFSGuarantorElement{
+            .coords = {bfsElement.coords.x-1, bfsElement.coords.y},
+            .zoneApplied = bfsElement.zoneApplied,
+            .neighbourStarted = bfsElement.neighbourStarted,
+            .weightSpread = bfsElement.weightSpread
+        });
+                bfsGuarantorQueue.push(BFSGuarantorElement{
+            .coords = {bfsElement.coords.x+1, bfsElement.coords.y},
+            .zoneApplied = bfsElement.zoneApplied,
+            .neighbourStarted = bfsElement.neighbourStarted,
+            .weightSpread = bfsElement.weightSpread
+        });
+                bfsGuarantorQueue.push(BFSGuarantorElement{
+            .coords = {bfsElement.coords.x, bfsElement.coords.y+1},
+            .zoneApplied = bfsElement.zoneApplied,
+            .neighbourStarted = bfsElement.neighbourStarted,
+            .weightSpread = bfsElement.weightSpread
+        });
+                bfsGuarantorQueue.push(BFSGuarantorElement{
+            .coords = {bfsElement.coords.x, bfsElement.coords.y+1},
+            .zoneApplied = bfsElement.zoneApplied,
+            .neighbourStarted = bfsElement.neighbourStarted,
+            .weightSpread = bfsElement.weightSpread
+        });
+    }
+
+
+    // Guarantor end, starting blend
     std::queue<BFSBlendElement> bfsBlendQueue;
 
-    for (auto& [id, matrix] : result){    
+    for (auto& [id, matrix] : zoneInfluence){    
         for (size_t y = 0; y < grid.getHeight(); ++y){
             for (size_t x = 0; x < grid.getWidth(); ++x){
                 if (matrix.get(x, y) <= 0.001){
                     continue;
                 }
-                tryAddToBFSBlendQueue(bfsBlendQueue, IntVector2(x+1, y), id, result, asymEdges);
-                tryAddToBFSBlendQueue(bfsBlendQueue, IntVector2(x-1, y), id, result, asymEdges);
-                tryAddToBFSBlendQueue(bfsBlendQueue, IntVector2(x, y+1), id, result, asymEdges);
-                tryAddToBFSBlendQueue(bfsBlendQueue, IntVector2(x, y-1), id, result, asymEdges);
+                tryAddToBFSBlendQueue(bfsBlendQueue, IntVector2(x+1, y), id, zoneInfluence, asymEdges);
+                tryAddToBFSBlendQueue(bfsBlendQueue, IntVector2(x-1, y), id, zoneInfluence, asymEdges);
+                tryAddToBFSBlendQueue(bfsBlendQueue, IntVector2(x, y+1), id, zoneInfluence, asymEdges);
+                tryAddToBFSBlendQueue(bfsBlendQueue, IntVector2(x, y-1), id, zoneInfluence, asymEdges);
             }
         }
     }
 
-    Matrix<std::unordered_map<Identifiable,double, IDHash>> tileZoneInfluence(grid.getWidth(), grid.getHeight()); // Each tile DOESN'T have all the zones, so need to check
+    std::unordered_map<Identifiable, Matrix<double>, IDHash> zoneBlendInfluence;
+    for (Identifiable id : mapTemplate.getIDs()){
+        zoneBlendInfluence[id] = Matrix(grid.getWidth(), grid.getHeight(), 0.0);
+    }
     while (!bfsBlendQueue.empty()){
         BFSBlendElement bfsElement = bfsBlendQueue.front();
         bfsBlendQueue.pop();
@@ -130,17 +229,14 @@ inline std::unordered_map<Identifiable, Matrix<double>, IDHash> blendConnections
         ){
             continue;
         }
-        
         double influence = (bfsElement.iterationsLeft + 1.0) / (bfsElement.blendDistance + 1.0);
-
-        if (tileZoneInfluence.get(bfsElement.coords).contains(bfsElement.spreadingZone) && tileZoneInfluence.get(bfsElement.coords).at(bfsElement.spreadingZone) >= influence){
+        if (zoneBlendInfluence.at(bfsElement.spreadingZone).get(bfsElement.coords) >= influence){
             continue;
         }
-    
-        if (result.at(bfsElement.spreadingZone).get(bfsElement.coords) == 1.0){
-            tileZoneInfluence.access(bfsElement.coords)[bfsElement.spreadingZone] = 1.0;
+        if (zoneInfluence.at(bfsElement.spreadingZone).get(bfsElement.coords) >= 1.0){
+            zoneBlendInfluence.at(bfsElement.spreadingZone).access(bfsElement.coords) = 1.0;
         } else{
-            tileZoneInfluence.access(bfsElement.coords)[bfsElement.spreadingZone] = influence;
+            zoneBlendInfluence.at(bfsElement.spreadingZone).access(bfsElement.coords) = influence;
         }
 
         bfsBlendQueue.push({
@@ -169,37 +265,72 @@ inline std::unordered_map<Identifiable, Matrix<double>, IDHash> blendConnections
         });
     }
 
-    for (auto& [id, matrix] : result){    
+    Matrix<double> sumInfluenceMatrix = Matrix(grid.getWidth(), grid.getHeight(), 0.0);
+    for (auto& [id, matrix] : zoneBlendInfluence){    
         for (size_t y = 0; y < grid.getHeight(); ++y){
             for (size_t x = 0; x < grid.getWidth(); ++x){
-                if (matrix.get(x, y) == 1.0 && !tileZoneInfluence.get(x, y).contains(id)){
-                    tileZoneInfluence.access(x, y)[id] = 1.0;
+                if (matrix.get(x, y) == 0.0 && zoneInfluence.at(id).get(x, y) >= 1.0){
+                    matrix.set(x, y, 1.0);
                 }
-                if (!tileZoneInfluence.get(x, y).contains(id)){
-                    continue;
-                }
-
-;
-                double sum = std::accumulate(
-                    tileZoneInfluence.get(x, y).begin(), 
-                    tileZoneInfluence.get(x, y).end(), 
-                    0.0,
-                    [](double acc, const auto& pair) {
-                        return acc + pair.second;
-                    }
-                );
-                result[id].set(x, y, tileZoneInfluence.get(x, y).at(id) / sum);
-                // if (id.getID() == 4){
-                    // std::cout << std::format("Result at [{}; {}] is {} for influence {}, sum calculated was: {}\n", x, y, result[id].get(x, y), tileZoneInfluence.get(x, y).at(id), sum);
-                // }
+                sumInfluenceMatrix.access(x, y) += matrix.get(x, y);
             }
         }
     }
 
-    return result;
+    for (auto& [id, matrix] : zoneInfluence){    
+        for (size_t y = 0; y < grid.getHeight(); ++y){
+            for (size_t x = 0; x < grid.getWidth(); ++x){            
+                if (sumInfluenceMatrix.get(x, y) <= 0.0001){
+                    matrix.set(x, y, 0.0);
+                    continue;
+                }    
+                matrix.access(x, y) = zoneBlendInfluence.at(id).get(x, y) / sumInfluenceMatrix.get(x, y);
+            }
+        }
+    }
+
+    return ZoneMasks{
+        .bonusMask = zoneBonuses,
+        .influenceMask = zoneInfluence
+    };
 }
 
-void tryAddToBFSBlendQueue(
+
+inline void tryAddToBFSGuarantorQueue(
+        std::queue<BFSGuarantorElement>& bfsGuarantorQueue,
+        IntVector2 coords,
+        Identifiable neighbourZone,
+        const std::unordered_map<Identifiable, Matrix<double>, IDHash>& matrices,
+        const std::unordered_map<Identifiable, Matrix<double>, IDHash>& zoneMasks,
+        const std::unordered_map<std::pair<Identifiable, Identifiable>, BasicConnection, AsymPairIDHash>& asymEdges
+    ){
+    if (
+        !matrices.at(neighbourZone).isValidPoint(coords)
+        || zoneMasks.at(neighbourZone).get(coords) >= 0.001
+    ){
+        return;
+    }
+    for (auto& [spreadingZone, matrix] : matrices){
+        if (
+            spreadingZone == neighbourZone
+            || zoneMasks.at(spreadingZone).get(coords) <= 0.001
+        ){
+            continue; // We seek for neighbour DIFFERENT zone
+        }
+        auto it = asymEdges.find({spreadingZone, neighbourZone}); // Main is where guaranteed area is applied. Neighbour is the relative border where it start from.
+        if (it == asymEdges.end()){
+            continue;
+        }
+        bfsGuarantorQueue.push(BFSGuarantorElement{
+            .coords = coords,
+            .zoneApplied = spreadingZone,
+            .neighbourStarted = neighbourZone,
+            .weightSpread = it->second.bonusValue
+        });
+    }
+}
+
+inline void tryAddToBFSBlendQueue(
         std::queue<BFSBlendElement>& bfsBlendQueue,
         IntVector2 coords,
         Identifiable spreadingZone,
@@ -208,14 +339,14 @@ void tryAddToBFSBlendQueue(
     ){
     if (
         !matrices.at(spreadingZone).isValidPoint(coords)
-        || matrices.at(spreadingZone).get(coords) == 1.0
+        || matrices.at(spreadingZone).get(coords) >= 0.001
     ){
         return;
     }
     for (auto& [zoneID, matrix] : matrices){
         if (
             zoneID == spreadingZone
-            || matrix.get(coords) != 1.0
+            || matrix.get(coords) <= 0.001
         ){
             continue;
         }
@@ -224,8 +355,7 @@ void tryAddToBFSBlendQueue(
             it = asymEdges.find({spreadingZone, zoneID});
         }
         if (it == asymEdges.end()){
-            continue; //actually should be the error
-            throw std::logic_error(std::format("No connection between {} and {}, but found open border at {}", zoneID.toString(), spreadingZone.toString(), coords.toString()));
+            continue;
         }
         bfsBlendQueue.push({
             coords,
@@ -242,7 +372,7 @@ inline std::unordered_map<Identifiable, Matrix<double>, IDHash> buildZoneMasks(c
 {
     std::unordered_map<Identifiable, Matrix<double>, IDHash> result;
     for (Identifiable id : grid.getTileIDs()){
-        result[id] = Matrix<double>(grid.getWidth(), grid.getHeight());       
+        result[id] = Matrix<double>(grid.getWidth(), grid.getHeight(), 0.0);       
     }
     for (auto it = grid.begin(); it != grid.end(); ++it){
         if (*it == Identifiable::nullID){

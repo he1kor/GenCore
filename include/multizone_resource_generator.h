@@ -63,7 +63,6 @@ Matrix<T> MultizoneResourceGenerator<T>::generateResourcesMap()
             double value = getAverageNoiseValue({x, y});
             for (size_t i = 0; i < resourceMapping.size(); ++i){
                 if (value >= resourceMapping.at(i).minimalThreshold && value < resourceMapping.at(i).maximalThreshold){
-
                     result.set(x, y, resourceMapping.at(i).resource);
                     break;
                 }
@@ -77,15 +76,8 @@ template <typename T>
 double MultizoneResourceGenerator<T>::getAverageNoiseValue(IntVector2 point)
 {
     double result = 0;
-    
-    double sumWeight = 0.0;
     for (auto& [id, resourceGenerator] : zones){
-        double weight = masks.at(id).get(point);
-        sumWeight += weight;
-    }
-    for (auto& [id, resourceGenerator] : zones){
-        double weight = masks.at(id).get(point);
-        result += (weight / sumWeight) * resourceGenerator.getNoise().get(point);
+        result += (resourceGenerator.getNoise().get(point) * masks.at(id).get(point));
     }
     return result;
 }
@@ -107,7 +99,7 @@ std::vector<ResourceMapping<T>> MultizoneResourceGenerator<T>::getAverageResourc
         double weight = masks.at(id).get(point);
         totalWeightSum += weight;
         
-        if (std::abs(weight) > 0.000001) { // Проверка на ноль с учетом погрешности
+        if (std::abs(weight) > 0.000001) {
             nonZeroWeightsCount++;
         }
         

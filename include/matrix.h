@@ -42,7 +42,8 @@ class Matrix{
     public:
         Matrix();
         Matrix(int width, int height);
-        Matrix(const std::vector<std::vector<T>>& matrix);
+        Matrix(int width, int height, const T &defaultValue);
+        Matrix(const std::vector<std::vector<T>> &matrix);
         Matrix(std::initializer_list<std::initializer_list<T>> init);
 
         void set(int x, int y, const T& value);
@@ -126,6 +127,8 @@ class Matrix{
         requires MatrixContainer<Container, T>
         static Matrix<T> average(Container& container);
 
+        void normalizeToRange01(std::optional<std::reference_wrapper<const Matrix<double>>> mask = std::nullopt);
+
         template <typename MatrixContainerType, typename WeightContainerType>
         requires MatrixContainer<MatrixContainerType, T> &&
                 NumericContainer<WeightContainerType>
@@ -137,7 +140,11 @@ class Matrix{
 
         template <typename Container>
         requires MatrixContainer<Container, T>
-        static Matrix<double> normalizedAverage(Container &matrices, std::optional<std::reference_wrapper<const Matrix<double>>> mask = std::nullopt);
+        static Matrix<double> normalizedAverage(
+            Container &matrices,
+            std::optional<std::reference_wrapper<const Matrix<double>>> mask = std::nullopt,
+            std::optional<std::reference_wrapper<const Matrix<double>>> bonus = std::nullopt
+        );
 
         template <typename MatrixContainerType, typename WeightContainerType>
         requires MatrixContainer<MatrixContainerType, T> &&
@@ -145,7 +152,8 @@ class Matrix{
         static Matrix<double> normalizedAverage(
             const MatrixContainerType& matrices,
             const WeightContainerType& weights,
-            std::optional<std::reference_wrapper<const Matrix<double>>> mask = std::nullopt
+            std::optional<std::reference_wrapper<const Matrix<double>>> mask = std::nullopt,
+            std::optional<std::reference_wrapper<const Matrix<double>>> bonus = std::nullopt
         );
 
         void applyByMask(const Matrix<bool> &mask, void (*visitor)(T &, bool));
@@ -156,7 +164,10 @@ class Matrix{
 
         template <typename U = T>
             requires Sortable<U> && HasHash<U>
-        void normalizeToPercentiles(std::optional<std::reference_wrapper<const Matrix<double>>> mask = std::nullopt);
+        void normalizeToPercentiles(
+            std::optional<std::reference_wrapper<const Matrix<double>>> mask = std::nullopt,
+            std::optional<std::reference_wrapper<const Matrix<double>>> bonus = std::nullopt
+        );
 
         class Iterator{
             private:
@@ -238,6 +249,14 @@ Matrix<T>::Matrix(int width, int height) : width(width), height(height)
     matrix = std::vector<std::vector<T>>(
         height, 
         std::vector<T>(width, T{}));
+}
+
+template <typename T>
+Matrix<T>::Matrix(int width, int height, const T& defaultValue) : width(width), height(height)
+{
+    matrix = std::vector<std::vector<T>>(
+        height, 
+        std::vector<T>(width, defaultValue));
 }
 
 template <typename T>
@@ -636,6 +655,9 @@ inline Matrix<T> Matrix<T>::average(
         }
         weightsIt++;
     }
+    if (std::abs(weightSum) < 0.000001) {
+        return Matrix<T>(width, height, {});
+    }
     for (T& pixel : result){
         pixel /= weightSum;
     }
@@ -651,16 +673,48 @@ inline Matrix<T> Matrix<T>::average(Container &matrices){
 }
 
 template <typename T>
+void Matrix<T>::normalizeToRange01(std::optional<std::reference_wrapper<const Matrix<double>>> mask) {
+    if (width <= 0 || height <= 0) return;
+
+    
+    double minVal = std::numeric_limits<double>::max();
+    double maxVal = std::numeric_limits<double>::lowest();
+    
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            if (!mask.has_value() || mask.value().get().get(x, y) <= 0.001){
+                continue;
+            }
+            double val = matrix[y][x];
+            minVal = std::min(minVal, val);
+            maxVal = std::max(maxVal, val);
+        }
+    }
+    
+    double range = maxVal - minVal;
+    if (range <= 0.0001){
+        return;
+    }
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            matrix[y][x] = (matrix[y][x] - minVal) / range;
+        }
+    }
+}
+
+template <typename T>
 template <typename MatrixContainerType, typename WeightContainerType>
 requires MatrixContainer<MatrixContainerType, T> &&
         NumericContainer<WeightContainerType>
 inline Matrix<double> Matrix<T>::normalizedAverage(
     const MatrixContainerType& matrices,
     const WeightContainerType& weights,
-    std::optional<std::reference_wrapper<const Matrix<double>>> mask
+    std::optional<std::reference_wrapper<const Matrix<double>>> mask,
+    std::optional<std::reference_wrapper<const Matrix<double>>> bonus
 ){
     Matrix<double> result = average(matrices, weights);
-    result.normalizeToPercentiles(mask);
+    result.normalizeToRange01(mask);
+    result.normalizeToPercentiles(mask, bonus);
     return result;
 }
 
@@ -697,29 +751,52 @@ inline Matrix<bool> Matrix<T>::mapToBinary(Predicate predicate){
 template <typename T>
 template <typename Container>
 requires MatrixContainer<Container, T>
-inline Matrix<double> Matrix<T>::normalizedAverage(Container &matrices, std::optional<std::reference_wrapper<const Matrix<double>>> mask){
+inline Matrix<double> Matrix<T>::normalizedAverage(
+    Container &matrices, std::optional<std::reference_wrapper<const Matrix<double>>> mask,
+    std::optional<std::reference_wrapper<const Matrix<double>>> bonus
+){
     Matrix<double> result = average(matrices);
-    result.normalizeToPercentiles(mask);
+    result.normalizeToRange01();
+    result.normalizeToPercentiles(mask, bonus);
     return result;
 }
 
 template <typename T>
 template <typename U>
     requires Sortable<U> && HasHash<U>
-void Matrix<T>::normalizeToPercentiles(std::optional<std::reference_wrapper<const Matrix<double>>> mask)
+void Matrix<T>::normalizeToPercentiles(
+    std::optional<std::reference_wrapper<const Matrix<double>>> mask,
+    std::optional<std::reference_wrapper<const Matrix<double>>> bonus
+)
 {
     std::unordered_map<U, std::vector<std::pair<int, int>>> valuePositions;
     
     int total = 0;
+    double maxValue = -100;
+    double maxBonus = -100;
     for (int y = 0; y < height; ++y) {
         for (int x = 0; x < width; ++x) {
             if (mask.has_value() && mask.value().get().get(x, y) <= 0.00001) {
                 matrix[y][x] = 0.0;
                 continue;
             }
+            maxValue = std::max(maxValue, matrix[y][x]);
             total++;
-            valuePositions[matrix[y][x] * (mask.has_value() ? mask.value().get().get(x,y) : 1)].emplace_back(x, y);
+            maxBonus = std::max(maxBonus, (bonus.has_value() ? bonus.value().get().get(x,y) : 0));
+            valuePositions[
+                (
+                    matrix[y][x] + 
+                    (bonus.has_value() ? bonus.value().get().get(x,y) : 0)
+                )
+                    * (mask.has_value() ? mask.value().get().get(x,y) : 1)
+            ].emplace_back(x, y);
         }
+    }
+    std::cout << bonus.has_value() << " (has value)\n";
+    std::cout << "maxValue: " << maxValue << "\tmaxBonus" << maxBonus << '\n';
+
+    if (total == 0){
+        return;
     }
     
     std::vector<U> uniqueValues;

@@ -14,7 +14,7 @@ public:
 
 class ResourceGuarantor {
 public:
-    ResourceGuarantor(int areaGuaranteed, double bonuxValue) : areaGuaranteed(areaGuaranteed), bonusValue(bonusValue) {}
+    ResourceGuarantor(int areaGuaranteed, double bonusValue) : areaGuaranteed(areaGuaranteed), bonusValue(bonusValue) {}
     int areaGuaranteed = 0;
     double bonusValue = 0.0;
 };
