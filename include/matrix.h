@@ -772,17 +772,13 @@ void Matrix<T>::normalizeToPercentiles(
     std::unordered_map<U, std::vector<std::pair<int, int>>> valuePositions;
     
     int total = 0;
-    double maxValue = -100;
-    double maxBonus = -100;
     for (int y = 0; y < height; ++y) {
         for (int x = 0; x < width; ++x) {
             if (mask.has_value() && mask.value().get().get(x, y) <= 0.00001) {
                 matrix[y][x] = 0.0;
                 continue;
             }
-            maxValue = std::max(maxValue, matrix[y][x]);
             total++;
-            maxBonus = std::max(maxBonus, (bonus.has_value() ? bonus.value().get().get(x,y) : 0));
             valuePositions[
                 (
                     matrix[y][x] + 
@@ -792,8 +788,6 @@ void Matrix<T>::normalizeToPercentiles(
             ].emplace_back(x, y);
         }
     }
-    std::cout << bonus.has_value() << " (has value)\n";
-    std::cout << "maxValue: " << maxValue << "\tmaxBonus" << maxBonus << '\n';
 
     if (total == 0){
         return;
