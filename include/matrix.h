@@ -771,14 +771,14 @@ void Matrix<T>::normalizeToPercentiles(
 {
     std::unordered_map<U, std::vector<std::pair<int, int>>> valuePositions;
     
-    int total = 0;
+    double total = 0;
     for (int y = 0; y < height; ++y) {
         for (int x = 0; x < width; ++x) {
             if (mask.has_value() && mask.value().get().get(x, y) <= 0.00001) {
                 matrix[y][x] = 0.0;
                 continue;
             }
-            total++;
+            total += mask.has_value() ? mask.value().get().get(x,y) : 1;
             valuePositions[
                 (
                     matrix[y][x] + 
@@ -789,7 +789,7 @@ void Matrix<T>::normalizeToPercentiles(
         }
     }
 
-    if (total == 0){
+    if (total <= 0.00001){
         return;
     }
     
@@ -800,11 +800,19 @@ void Matrix<T>::normalizeToPercentiles(
     }
     
     std::sort(uniqueValues.begin(), uniqueValues.end());
-    int cumulativeCount = 0;
+    double cumulativeCount = 0;
     
     for (const auto& value : uniqueValues) {
         const auto& positions = valuePositions[value];
-        int count = positions.size();
+        double count = 0;
+        if (mask.has_value()){
+            for (const auto& [x, y] : positions) {
+                count += mask.value().get().get(x,y);
+            }
+        } else{
+            count = positions.size();
+        }
+
         
         double percentile = (cumulativeCount + count / 2.0) / total;
         
