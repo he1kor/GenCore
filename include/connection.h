@@ -25,13 +25,13 @@ public:
     int intakeDistance = 0;
 };
 
-class BasicAsymConnection : public Blendable, public ResourceGuarantor, public Intakable {
+class BasicAsymConnection : public ResourceGuarantor, public Intakable {
 public:
-    BasicAsymConnection() : Blendable(0), Intakable(0), ResourceGuarantor(0, 0.0){};
-    BasicAsymConnection(int blendableDistance, int intakeDistance, int areaGuaranteed, double bonusValue) : Blendable(blendableDistance), Intakable(intakeDistance), ResourceGuarantor(areaGuaranteed, bonusValue){};
+    BasicAsymConnection() : Intakable(0), ResourceGuarantor(0, 0.0){};
+    BasicAsymConnection(int intakeDistance, int areaGuaranteed, double bonusValue) : Intakable(intakeDistance), ResourceGuarantor(areaGuaranteed, bonusValue){};
 };
 
-struct SymConnection : public tiles::PassParams{
-    SymConnection() : tiles::PassParams(){};
-    SymConnection(const tiles::PassParams& params) : tiles::PassParams(params){};
+struct BasicSymConnection : public Blendable, public tiles::PassParams{
+    BasicSymConnection() : Blendable(0), tiles::PassParams(){};
+    BasicSymConnection(int blendableDistance, const tiles::PassParams& params) : Blendable(blendableDistance), tiles::PassParams(params){};
 };
