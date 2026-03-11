@@ -41,14 +41,14 @@ struct BFSGuarantorElement{
 };
 
 template <typename T, typename SyncEdgeT>
-ZoneMasks blendConnections(const Grid<T>& grid, const EdgeGraph<T, SyncEdgeT, BasicConnection>& mapTemplate);
+ZoneMasks blendConnections(const Grid<T>& grid, const EdgeGraph<T, SyncEdgeT, BasicAsymConnection>& mapTemplate);
 
 void tryAddToBFSBlendQueue(
         std::queue<BFSBlendElement>& bfsBlendQueue,
         IntVector2 coords,
         Identifiable spreadingZone,
         const std::unordered_map<Identifiable, Matrix<double>, IDHash>& matrices,
-        const std::unordered_map<std::pair<Identifiable, Identifiable>, BasicConnection, AsymPairIDHash>& asymEdges
+        const std::unordered_map<std::pair<Identifiable, Identifiable>, BasicAsymConnection, AsymPairIDHash>& asymEdges
     );
 
 template <typename T>
@@ -57,7 +57,7 @@ std::unordered_map<Identifiable, Matrix<double>, IDHash> buildZoneMasks(const Gr
 
 
 template <typename T, typename SyncEdgeT>
-inline ZoneMasks blendConnections(const Grid<T>& grid, const EdgeGraph<T, SyncEdgeT, BasicConnection>& mapTemplate)
+inline ZoneMasks blendConnections(const Grid<T>& grid, const EdgeGraph<T, SyncEdgeT, BasicAsymConnection>& mapTemplate)
 {
     std::unordered_map<Identifiable, Matrix<double>, IDHash> zoneInfluence = buildZoneMasks(grid);
 
@@ -184,7 +184,7 @@ inline ZoneMasks blendConnections(const Grid<T>& grid, const EdgeGraph<T, SyncEd
             .weightSpread = bfsElement.weightSpread
         });
                 bfsGuarantorQueue.push(BFSGuarantorElement{
-            .coords = {bfsElement.coords.x, bfsElement.coords.y+1},
+            .coords = {bfsElement.coords.x, bfsElement.coords.y-1},
             .zoneApplied = bfsElement.zoneApplied,
             .neighbourStarted = bfsElement.neighbourStarted,
             .weightSpread = bfsElement.weightSpread
@@ -302,7 +302,7 @@ inline void tryAddToBFSGuarantorQueue(
         Identifiable neighbourZone,
         const std::unordered_map<Identifiable, Matrix<double>, IDHash>& matrices,
         const std::unordered_map<Identifiable, Matrix<double>, IDHash>& zoneMasks,
-        const std::unordered_map<std::pair<Identifiable, Identifiable>, BasicConnection, AsymPairIDHash>& asymEdges
+        const std::unordered_map<std::pair<Identifiable, Identifiable>, BasicAsymConnection, AsymPairIDHash>& asymEdges
     ){
     if (
         !matrices.at(neighbourZone).isValidPoint(coords)
@@ -335,7 +335,7 @@ inline void tryAddToBFSBlendQueue(
         IntVector2 coords,
         Identifiable spreadingZone,
         const std::unordered_map<Identifiable, Matrix<double>, IDHash>& matrices,
-        const std::unordered_map<std::pair<Identifiable, Identifiable>, BasicConnection, AsymPairIDHash>& asymEdges
+        const std::unordered_map<std::pair<Identifiable, Identifiable>, BasicAsymConnection, AsymPairIDHash>& asymEdges
     ){
     if (
         !matrices.at(spreadingZone).isValidPoint(coords)
