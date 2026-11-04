@@ -29,6 +29,7 @@ struct BFSIntakeElement{
 struct BFSBlendElement{
     IntVector2 coords;
     Identifiable spreadingZone;
+    Identifiable receivingZone;
     int blendDistance;
     int iterationsLeft;
 };
@@ -228,6 +229,8 @@ inline ZoneMasks blendConnections(const Grid<T>& grid, const EdgeGraph<T, BasicS
             !grid.isValidPoint(bfsElement.coords)
             || grid.getTileID(bfsElement.coords) == Identifiable::nullID
             || bfsElement.iterationsLeft < 1
+            // Intake may have changed ownership, so use the pre-blend masks.
+            || zoneInfluence.at(bfsElement.receivingZone).get(bfsElement.coords) < 1.0
         ){
             continue;
         }
@@ -235,33 +238,33 @@ inline ZoneMasks blendConnections(const Grid<T>& grid, const EdgeGraph<T, BasicS
         if (zoneBlendInfluence.at(bfsElement.spreadingZone).get(bfsElement.coords) >= influence){
             continue;
         }
-        if (zoneInfluence.at(bfsElement.spreadingZone).get(bfsElement.coords) >= 1.0){
-            zoneBlendInfluence.at(bfsElement.spreadingZone).access(bfsElement.coords) = 1.0;
-        } else{
-            zoneBlendInfluence.at(bfsElement.spreadingZone).access(bfsElement.coords) = influence;
-        }
+        zoneBlendInfluence.at(bfsElement.spreadingZone).access(bfsElement.coords) = influence;
 
         bfsBlendQueue.push({
             bfsElement.coords.x+1, bfsElement.coords.y,
             bfsElement.spreadingZone,
+            bfsElement.receivingZone,
             bfsElement.blendDistance,
             bfsElement.iterationsLeft - 1
         });
         bfsBlendQueue.push({
             bfsElement.coords.x-1, bfsElement.coords.y,
             bfsElement.spreadingZone,
+            bfsElement.receivingZone,
             bfsElement.blendDistance,
             bfsElement.iterationsLeft - 1
         });
         bfsBlendQueue.push({
             bfsElement.coords.x, bfsElement.coords.y+1,
             bfsElement.spreadingZone,
+            bfsElement.receivingZone,
             bfsElement.blendDistance,
             bfsElement.iterationsLeft - 1
         });
         bfsBlendQueue.push({ 
             bfsElement.coords.x, bfsElement.coords.y-1,
             bfsElement.spreadingZone,
+            bfsElement.receivingZone,
             bfsElement.blendDistance,
             bfsElement.iterationsLeft - 1
         });
@@ -356,14 +359,16 @@ inline void tryAddToBFSBlendQueue(
         if (it == symEdges.end()){
             it = symEdges.find({spreadingZone, zoneID});
         }
-        if (it == symEdges.end()){
+        if (it == symEdges.end() || it->second.blendDistance <= 0){
             continue;
         }
+        // Seed the receiving side directly, retaining the existing border falloff.
         bfsBlendQueue.push({
             coords,
+            spreadingZone,
             zoneID,
             it->second.blendDistance,
-            it->second.blendDistance
+            it->second.blendDistance - 1
         });
     }
 }
