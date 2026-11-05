@@ -70,6 +70,35 @@ Generation result:
 
 *Example output using `grid3x3` template* 
 
+## Resource mappings
+
+`ResourceGenerator<T>` maps normalized noise percentiles to resource values supplied
+by the caller. A mapping uses a half-open interval `[minimalThreshold, maximalThreshold)`:
+
+```cpp
+enum class ResourceType { TypeA, TypeB, Empty };
+
+std::vector<ResourceMapping<ResourceType>> mappings = {
+    {0.0, 0.4, ResourceType::TypeA},
+    {0.4, 1.0, ResourceType::TypeB}
+};
+```
+
+Positive intervals must cover `[0, 1]` without gaps or overlaps. Invalid coverage
+raises `std::invalid_argument`. A uniform zone uses one resource mapping covering
+the full range.
+
+`MultizoneResourceGenerator<T>` matches resources by their values rather than their
+positions in a list. Zones may list resources in different orders and omit unused
+resource values. At cells influenced by one zone, its percentile intervals are used
+directly. At blended cells, interval widths become resource shares, which are combined
+by identity and sampled in stable resource order. The resource type `T` must support
+ordering.
+
+`MultizoneResourceGenerator<T>::generateResourcesMap(emptyResource)` requires an
+explicit value for cells outside all zone masks. Resource identities, serialization,
+and presentation are defined by the application using the library.
+
 ## Installation
 
 ### Using CMake

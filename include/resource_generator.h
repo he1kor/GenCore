@@ -1,6 +1,9 @@
 #pragma once
 #include <vector>
 #include <optional>
+#include <algorithm>
+#include <cmath>
+#include <stdexcept>
 #include "matrix.h"
 #include "noise.h"
 
@@ -16,6 +19,30 @@ struct ResourceMapping{
     double maximalThreshold = 0.0;
     T resource;
 }; 
+
+template <typename T>
+void validateResourceMappings(const std::vector<ResourceMapping<T>>& resources) {
+    std::vector<std::pair<double, double>> intervals;
+    for (const auto& resource : resources) {
+        const double start = resource.minimalThreshold;
+        const double end = resource.maximalThreshold;
+        if (!std::isfinite(start) || !std::isfinite(end) || start < 0.0 || end > 1.0 || start > end) {
+            throw std::invalid_argument("Resource thresholds must be finite ranges within [0, 1]");
+        }
+        if (end > start) intervals.push_back({start, end});
+    }
+    std::sort(intervals.begin(), intervals.end());
+    double covered = 0.0;
+    for (const auto& [start, end] : intervals) {
+        if (std::abs(start - covered) > 1e-9) {
+            throw std::invalid_argument("Resource thresholds must cover [0, 1] without gaps or overlaps");
+        }
+        covered = end;
+    }
+    if (std::abs(covered - 1.0) > 1e-9) {
+        throw std::invalid_argument("Resource thresholds must cover [0, 1]; declare rock explicitly");
+    }
+}
 
 template <typename T>
 class ResourceGenerator{
@@ -95,7 +122,9 @@ inline void ResourceGenerator<T>::setup(
     std::optional<std::reference_wrapper<Matrix<double>>> mask,
     std::optional<std::reference_wrapper<Matrix<double>>> bonus)
 {
+    validateResourceMappings(resources);
     this->dimension = dimension;
+    resourceThresholds.clear();
     resourceThresholds.reserve(resources.size());
     resourceMappings = std::vector<T>();
     resourceMappings->reserve(resources.size());
@@ -120,11 +149,16 @@ inline Matrix<T> ResourceGenerator<T>::generateResourcesMap()
     Matrix<T> result(dimension.x, dimension.y);
     for (size_t y = 0; y < result.getHeight(); ++y){
         for (size_t x = 0; x < result.getWidth(); ++x){
+            bool assigned = false;
             for (size_t i = 0; i < resourceThresholds.size(); ++i){
                 if (noiseMap.get(x, y) >= resourceThresholds[i].first && noiseMap.get(x, y) < resourceThresholds[i].second){
                     result.set(x, y, (*resourceMappings)[i]);
+                    assigned = true;
                     break;
                 }
+            }
+            if (!assigned) {
+                throw std::domain_error("Noise value is not covered by the resource thresholds");
             }
         }
     }
