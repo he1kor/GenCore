@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <stdexcept>
+#include <cmath>
 #include "spot.h"
 
 constexpr int ID_LIMIT = 1000;
@@ -67,6 +68,14 @@ public:
 
     DoubleVector2 getSize() const{
         return {width, height};
+    }
+
+    // Update the bounds without moving existing spots.
+    void setSize(double width, double height) {
+        if (!std::isfinite(width) || !std::isfinite(height) || width <= 0.0 || height <= 0.0)
+            throw std::invalid_argument("Plane dimensions must be finite and positive");
+        this->width = width;
+        this->height = height;
     }
     
     double getWidth() const {

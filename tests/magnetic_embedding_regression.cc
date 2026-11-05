@@ -4,6 +4,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 #include <string>
 
@@ -17,7 +18,8 @@ static void close(double a, double b, const char* message) {
 
 static EmbeddablePlane<BasicNode> controlledGrid(double susceptibility, bool magnets = true) {
     const auto graph = templates::makeGrid3x3(susceptibility);
-    EmbeddablePlane<BasicNode> plane(128.0, 80.0);
+    EmbeddablePlane<BasicNode> plane(128.0, 128.0);
+    plane.setSize(128.0, 80.0);
     RandomGenerator::instance().setSeed(12419);
     plane.initEmbed(graph);
     std::vector<Spot<BasicNode>> spots;
@@ -99,6 +101,23 @@ static double trajectory(const char* name, double susceptibility, std::ostream* 
 
 int main(int argc, char** argv) {
     try {
+        auto resized = controlledGrid(0.0);
+        const auto previous = resized.getSpot(0).getCoords();
+        resized.setSize(100.0, 60.0);
+        close(resized.getRightX(), 100.0, "Resized width is incorrect");
+        close(resized.getBottomY(), 60.0, "Resized height is incorrect");
+        close(resized.getSpot(0).getX(), previous.x, "Resizing moved an existing spot");
+        close(resized.getSpot(0).getY(), previous.y, "Resizing moved an existing spot");
+        for (double invalid : {0.0, -1.0, std::numeric_limits<double>::infinity(), std::numeric_limits<double>::quiet_NaN()}) {
+            for (bool width : {false, true}) {
+                bool rejected = false;
+                try { resized.setSize(width ? invalid : 100.0, width ? 60.0 : invalid); }
+                catch (const std::invalid_argument&) { rejected = true; }
+                require(rejected, "Invalid plane dimensions were accepted");
+                close(resized.getWidth(), 100.0, "Failed resize changed width");
+                close(resized.getHeight(), 60.0, "Failed resize changed height");
+            }
+        }
         require(templates::grid3x3->size() == 9 && templates::grid3x3->getSymEdges().size() == 12,
             "Adapted grid has the wrong topology");
         require(templates::grid3x3->getNeighbours(4).size() == 4 && templates::grid3x3->getNeighbours(0).size() == 2,
