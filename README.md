@@ -52,8 +52,9 @@ std::shared_ptr<Grid<BasicNode>> generateMap() {
     auto map = std::make_shared<Grid<BasicNode>>(safeRasterizePlane(embedding));
 
     // --- Phase 3: Zone Expansion ---
-    ZoneBloater<BasicNode> zoneBloater;
-    zoneBloater.initVoronoi(templates::grid3x3, map);
+    ZoneBloater<BasicNode, BasicSymConnection, BasicAsymConnection> zoneBloater;
+    zoneBloater.initEdgeVoronoi(*templates::grid3x3, map);
+    zoneBloater.setBloatMode(bloatStrategies::DiagonalRandomBloat());
     zoneBloater.start();
     while (zoneBloater.step()) {  // Progressively expands zones
         #if 0  // Debug: Uncomment to inspect tiles
@@ -69,6 +70,11 @@ Generation result:
 <img width="256" height="256" alt="demo 3" src="https://github.com/user-attachments/assets/7a821efe-d1f4-4566-b7c6-094732f336ca" />
 
 *Example output using `grid3x3` template* 
+
+`templates::grid3x3` is a neutral nine-node grid with twelve undirected connections.
+`templates::makeGrid3x3(susceptibility)` creates the same topology with a chosen
+susceptibility for every node. Apply a magnet grid with `applyMagnetGrid` before
+stepping the embedding to enable magnetic placement.
 
 ## Resource mappings
 

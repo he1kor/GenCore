@@ -5,8 +5,29 @@
 #include "edge_graph.h"
 #include "identifiable.h"
 #include "nodes.h"
+#include "connection.h"
 
 namespace templates{
+
+    using BasicGridGraph = EdgeGraph<BasicNode, BasicSymConnection, BasicAsymConnection>;
+
+    inline std::shared_ptr<const BasicGridGraph> makeGrid3x3(double susceptibility = 0.0) {
+        std::vector<std::pair<BasicNode, std::vector<Identifiable>>> nodes;
+        for (int y = 0; y < 3; ++y) {
+            for (int x = 0; x < 3; ++x) {
+                const int id = y * 3 + x;
+                std::vector<Identifiable> neighbours;
+                if (x > 0) neighbours.emplace_back(id - 1);
+                if (x < 2) neighbours.emplace_back(id + 1);
+                if (y > 0) neighbours.emplace_back(id - 3);
+                if (y < 2) neighbours.emplace_back(id + 3);
+                nodes.push_back({BasicNode(id, susceptibility), neighbours});
+            }
+        }
+        return std::make_shared<const BasicGridGraph>(nodes);
+    }
+
+    inline const auto grid3x3 = makeGrid3x3();
 
     // namespace radial{
     //     static std::shared_ptr<const EdgeGraph<RadialNode>> grid3x3 = std::make_shared<const EdgeGraph<RadialNode>>(
