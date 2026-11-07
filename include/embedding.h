@@ -10,6 +10,7 @@
 #include <unordered_map>
 #include <stack>
 #include <cassert>
+#include <utility>
 
 #include "math_util.h"
 #include "graph.h" 
@@ -33,6 +34,11 @@ static Grid<IdentifiedMagnet> cornerMagnets = Grid<IdentifiedMagnet>(
     }
 );
 
+struct EdgeIntersection {
+    std::pair<Identifiable, Identifiable> firstEdge;
+    std::pair<Identifiable, Identifiable> secondEdge;
+};
+
 
 template<typename T>
 class EmbeddablePlane : public Plane<T>{
@@ -48,6 +54,10 @@ class EmbeddablePlane : public Plane<T>{
         void setupTempSpots();
         void calculateZoneRadius();
         void applyMagnetGrid(Grid<IdentifiedMagnet> magnetRelativePoses);
+        // O(E^2). Reports crossings, overlaps and non-shared endpoint contacts.
+        // Edges may meet at their shared graph vertex, but may not overlap there.
+        std::vector<EdgeIntersection> findEdgeIntersections() const;
+        size_t warnEdgeIntersections(std::ostream& output = std::cerr) const;
 
     private:
         DoubleVector2 getClosestPointOnEdge(const DoubleVector2 point, const DoubleVector2 end1, const DoubleVector2 end2);
@@ -67,18 +77,18 @@ class EmbeddablePlane : public Plane<T>{
         std::unordered_map<Identifiable, Spot<T>, IDHash> temp_spots;
         std::vector<IdentifiedMagnet> magnets;
         
-        const int iterationsMax = 100;
-        const int repulsionEdgeIterationsMax = 100;
-        const int repulsionIterationsMax = 120;
-        const double minDistanceRepulsion = 2.0;
-        const double kEdgeRepulsion = 30.0f;
-        const double kRepulsion = 17.0;
-        const double kBorderRepulsion = 57.0;
-        const double kAttraction = 0.150;
-        const bool squareDistance = true;
-        const double minimumTemperature = 0.01;
-        const double magnetForceIterationMin = 20;
-        const double magnetForceIterationMax = 120;
+        static constexpr int iterationsMax = 100;
+        static constexpr int repulsionEdgeIterationsMax = 100;
+        static constexpr int repulsionIterationsMax = 120;
+        static constexpr double minDistanceRepulsion = 2.0;
+        static constexpr double kEdgeRepulsion = 30.0f;
+        static constexpr double kRepulsion = 17.0;
+        static constexpr double kBorderRepulsion = 57.0;
+        static constexpr double kAttraction = 0.150;
+        static constexpr bool squareDistance = true;
+        static constexpr double minimumTemperature = 0.01;
+        static constexpr double magnetForceIterationMin = 20;
+        static constexpr double magnetForceIterationMax = 120;
 };
 
 
@@ -133,8 +143,10 @@ template<typename T> bool EmbeddablePlane<T>::stepForceDirected(){
 
     this->commitSpots();
     currentIteration++;
-    if (currentIteration >= repulsionIterationsMax)
+    if (currentIteration >= repulsionIterationsMax) {
         currentIteration = -1;
+        warnEdgeIntersections();
+    }
     return true;
 }
 
@@ -159,8 +171,10 @@ template<typename T> bool EmbeddablePlane<T>::stepForceDirectedStable(){
 
     this->commitSpots();
     currentIteration++;
-    if (currentIteration >= repulsionIterationsMax)
+    if (currentIteration >= repulsionIterationsMax) {
         currentIteration = -1;
+        warnEdgeIntersections();
+    }
     return true;
 }
 
@@ -174,6 +188,86 @@ template<typename T> void EmbeddablePlane<T>::embed(std::shared_ptr<const Graph<
 
 template<typename T> bool EmbeddablePlane<T>::isEmbedding(){
     return currentIteration != -1;
+}
+
+template<typename T>
+std::vector<EdgeIntersection> EmbeddablePlane<T>::findEdgeIntersections() const {
+    if (!currentGraph) return {};
+
+    // Normalize and sort so each undirected edge/pair is checked exactly once,
+    // with reproducible diagnostics regardless of node or adjacency order.
+    std::vector<std::pair<Identifiable, Identifiable>> edges;
+    for (Identifiable id : currentGraph->getIDs()) {
+        for (Identifiable neighbour : currentGraph->getNeighbours(id)) {
+            edges.push_back(PairIDHash::normalize({id, neighbour}));
+        }
+    }
+    std::sort(edges.begin(), edges.end());
+    edges.erase(std::unique(edges.begin(), edges.end()), edges.end());
+
+    const auto orientation = [](DoubleVector2 a, DoubleVector2 b, DoubleVector2 c) {
+        // Compute differences and products at higher precision; do not round
+        // positions to tiles or use a fixed map-unit epsilon for nearby edges.
+        const long double abX = static_cast<long double>(b.x) - a.x;
+        const long double abY = static_cast<long double>(b.y) - a.y;
+        const long double acX = static_cast<long double>(c.x) - a.x;
+        const long double acY = static_cast<long double>(c.y) - a.y;
+        return sign(abX * acY - abY * acX);
+    };
+    const auto onSegment = [](DoubleVector2 a, DoubleVector2 b, DoubleVector2 p) {
+        return p.x >= std::min(a.x, b.x) && p.x <= std::max(a.x, b.x)
+            && p.y >= std::min(a.y, b.y) && p.y <= std::max(a.y, b.y);
+    };
+
+    std::vector<EdgeIntersection> intersections;
+    for (size_t i = 0; i < edges.size(); ++i) {
+        const auto& first = edges[i];
+        const auto a = this->getSpot(first.first).getCoords();
+        const auto b = this->getSpot(first.second).getCoords();
+        for (size_t j = i + 1; j < edges.size(); ++j) {
+            const auto& second = edges[j];
+            const auto c = this->getSpot(second.first).getCoords();
+            const auto d = this->getSpot(second.second).getCoords();
+            const int abc = orientation(a, b, c);
+            const int abd = orientation(a, b, d);
+            const int cda = orientation(c, d, a);
+            const int cdb = orientation(c, d, b);
+            const bool sharedVertex = first.first == second.first || first.first == second.second
+                || first.second == second.first || first.second == second.second;
+
+            if (sharedVertex) {
+                // A shared endpoint is legal. A collinear interval shared by
+                // incident edges is not; opposite rays only meet at the vertex.
+                const bool collinear = abc == 0 && abd == 0 && cda == 0 && cdb == 0;
+                const bool overlapX = std::max(std::min(a.x, b.x), std::min(c.x, d.x))
+                    < std::min(std::max(a.x, b.x), std::max(c.x, d.x));
+                const bool overlapY = std::max(std::min(a.y, b.y), std::min(c.y, d.y))
+                    < std::min(std::max(a.y, b.y), std::max(c.y, d.y));
+                if (collinear && (overlapX || overlapY)) intersections.push_back({first, second});
+            } else if ((abc * abd < 0 && cda * cdb < 0)
+                || (abc == 0 && onSegment(a, b, c)) || (abd == 0 && onSegment(a, b, d))
+                || (cda == 0 && onSegment(c, d, a)) || (cdb == 0 && onSegment(c, d, b))) {
+                intersections.push_back({first, second});
+            }
+        }
+    }
+    return intersections;
+}
+
+template<typename T>
+size_t EmbeddablePlane<T>::warnEdgeIntersections(std::ostream& output) const {
+    const auto intersections = findEdgeIntersections();
+    if (!intersections.empty()) {
+        output << "Warning: embedding has " << intersections.size()
+            << " intersecting edge pair(s) before rasterization/zone growth:\n";
+        for (const auto& intersection : intersections) {
+            output << "  Edge (" << intersection.firstEdge.first.getID() << ", "
+                << intersection.firstEdge.second.getID() << ") intersects edge ("
+                << intersection.secondEdge.first.getID() << ", "
+                << intersection.secondEdge.second.getID() << ")\n";
+        }
+    }
+    return intersections.size();
 }
 
 template <typename T>

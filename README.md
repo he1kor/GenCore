@@ -76,6 +76,40 @@ Generation result:
 susceptibility for every node. Apply a magnet grid with `applyMagnetGrid` before
 stepping the embedding to enable magnetic placement.
 
+## Embedding diagnostics
+
+`EmbeddablePlane<T>::findEdgeIntersections() const` checks all unique undirected
+edge pairs in the current straight-line drawing in O(E^2) time. It returns a
+vector of `EdgeIntersection` records, each containing `firstEdge` and
+`secondEdge` endpoint ID pairs. Endpoints and results are sorted by ID for
+repeatable tests. It can be called after initialization, during embedding, or
+after completion, without changing the drawing. Before initialization it returns
+an empty vector.
+
+The checker reports proper crossings, collinear overlaps (including incident
+edges), and contacts between edges without a shared graph vertex. Edges meeting
+only at their shared graph vertex are allowed. Checks use floating-point plane
+positions before rasterization; they do not validate connectivity, final zone
+areas, passages, isolated vertices, or collisions introduced by rounding to tiles.
+
+```cpp
+const auto intersections = embedding.findEdgeIntersections();
+for (const auto& hit : intersections) {
+    std::cout << hit.firstEdge.first << " - " << hit.firstEdge.second
+              << " intersects " << hit.secondEdge.first << " - "
+              << hit.secondEdge.second << '\n';
+}
+```
+
+`warnEdgeIntersections(std::ostream& output = std::cerr) const` prints a summary
+and all offending pairs, returning the pair count. The final force-directed
+step calls it automatically, once per embedding run, before the caller proceeds
+to rasterization. It warns without rejecting or modifying the layout.
+
+Enable `GENCORE_BUILD_TESTS` to build `embedding_intersection_regression`, which
+covers crossings, endpoint contacts, overlaps, shared vertices, close parallel
+edges, collapsed segments, deterministic results, and completion warnings.
+
 ## Resource mappings
 
 `ResourceGenerator<T>` maps normalized noise percentiles to resource values supplied
