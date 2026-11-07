@@ -11,6 +11,7 @@
 #include <stack>
 #include <cassert>
 #include <utility>
+#include <optional>
 
 #include "math_util.h"
 #include "graph.h" 
@@ -18,6 +19,8 @@
 #include "grid.h"
 
 #include "random_generator.h"
+#include "planar_layout.h"
+#include "radial.h"
 
 struct IdentifiedMagnet : public Identifiable, public Magnet{
     public:
@@ -44,7 +47,13 @@ template<typename T>
 class EmbeddablePlane : public Plane<T>{
     public:
         using Plane<T>::Plane;
-        void initEmbed(std::shared_ptr<const Graph<T>> graph);
+        // Default: planar construction and topology-preserving refinement.
+        void initEmbed(std::shared_ptr<const Graph<T>> graph, const EdgeGeometryMap& preferences = {},
+            std::uint64_t seed = RandomGenerator::instance().getSeed(),
+            std::shared_ptr<const planar::Topology> topology = nullptr);
+        bool stepPlanar();
+        // Legacy unconstrained algorithm, retained for comparisons.
+        void initForceDirected(std::shared_ptr<const Graph<T>> graph);
         bool stepForceDirected();
         bool stepForceDirectedStable();
         void embedNode(Node<T> node, double x, double y);
@@ -68,6 +77,7 @@ class EmbeddablePlane : public Plane<T>{
         void applyEdgeRepulse(double temperature);
         void applyMagnetForces(double temperature);
         void applyAttraction(double temperature);
+        void publishPlanarSpots();
 
         
         int currentIteration = -1;
@@ -76,6 +86,9 @@ class EmbeddablePlane : public Plane<T>{
         std::shared_ptr<const Graph<T>> currentGraph;
         std::unordered_map<Identifiable, Spot<T>, IDHash> temp_spots;
         std::vector<IdentifiedMagnet> magnets;
+        std::shared_ptr<const planar::Topology> planarTopology;
+        std::optional<planar::Layout> planarLayout;
+        int planarIteration = 0;
         
         static constexpr int iterationsMax = 100;
         static constexpr int repulsionEdgeIterationsMax = 100;
@@ -92,7 +105,76 @@ class EmbeddablePlane : public Plane<T>{
 };
 
 
-template<typename T> void EmbeddablePlane<T>::initEmbed(std::shared_ptr<const Graph<T>> graph){
+template<typename T>
+void EmbeddablePlane<T>::initEmbed(std::shared_ptr<const Graph<T>> graph, const EdgeGeometryMap& preferences,
+    std::uint64_t seed, std::shared_ptr<const planar::Topology> topology) {
+    if (!graph) throw std::invalid_argument("No embedding graph supplied");
+    if (!topology) topology = planar::makeTopology(*graph);
+    std::vector<Identifiable> ids = graph->getIDs();
+    std::sort(ids.begin(), ids.end());
+    if (ids != topology->ids) throw std::invalid_argument("Cached embedding topology does not match graph nodes");
+    std::vector<planar::Edge> actualEdges;
+    for (size_t u = 0; u < ids.size(); ++u) {
+        for (auto neighbour : graph->getNeighbours(ids[u])) {
+            const auto it = std::lower_bound(ids.begin(), ids.end(), neighbour);
+            if (it == ids.end() || *it != neighbour) throw std::invalid_argument("Missing graph endpoint");
+            const size_t v = it - ids.begin();
+            actualEdges.emplace_back(std::min(u, v), std::max(u, v));
+        }
+    }
+    std::sort(actualEdges.begin(), actualEdges.end());
+    actualEdges.erase(std::unique(actualEdges.begin(), actualEdges.end()), actualEdges.end());
+    if (actualEdges != topology->edges) throw std::invalid_argument("Cached embedding topology does not match graph edges");
+    std::vector<double> radii;
+    for (auto id : topology->ids) {
+        if constexpr (std::is_base_of_v<Radial, T>) radii.push_back(graph->getValue(id).getRadius());
+        else radii.push_back(1.0);
+    }
+    planar::Layout layout(topology, radii, preferences, this->getLeftX(), this->getUpperY(),
+        this->getWidth(), this->getHeight(), seed);
+    currentGraph = std::move(graph);
+    planarTopology = std::move(topology);
+    planarLayout = std::move(layout);
+    currentIteration = -1;
+    planarIteration = 0;
+    temp_spots.clear();
+    publishPlanarSpots();
+}
+
+template<typename T>
+void EmbeddablePlane<T>::publishPlanarSpots() {
+    std::vector<Spot<T>> spots;
+    const auto& positions = planarLayout->positions();
+    for (size_t i = 0; i < positions.size(); ++i)
+        spots.emplace_back(positions[i].x, positions[i].y, currentGraph->getValue(planarTopology->ids[i]));
+    this->setSpots(spots);
+}
+
+template<typename T>
+bool EmbeddablePlane<T>::stepPlanar() {
+    if (!planarLayout || !planarLayout->isRunning()) return false;
+    std::vector<DoubleVector2> forces(planarTopology->ids.size());
+    if constexpr (std::is_base_of_v<Magnetic, T>) {
+        if (planarIteration >= magnetForceIterationMin) {
+            for (size_t i = 0; i < forces.size(); ++i) {
+                const auto id = planarTopology->ids[i];
+                for (const auto& magnet : magnets) {
+                    const auto force = magnet.calculateForce(this->getSpot(id).getCoords(), this->getValue(id));
+                    forces[i].x += force.x; forces[i].y += force.y;
+                }
+            }
+        }
+    }
+    if (!planarLayout->step(forces)) return false;
+    ++planarIteration;
+    publishPlanarSpots();
+    return true;
+}
+
+template<typename T> void EmbeddablePlane<T>::initForceDirected(std::shared_ptr<const Graph<T>> graph){
+    planarLayout.reset();
+    planarTopology.reset();
+    temp_spots.clear();
     this->currentGraph = graph;
     calculateZoneRadius();
     this->clear();
@@ -123,6 +205,7 @@ template<typename T> void EmbeddablePlane<T>::initEmbed(std::shared_ptr<const Gr
 }
 
 template<typename T> bool EmbeddablePlane<T>::stepForceDirected(){
+    if (planarLayout) return stepPlanar();
     if (currentIteration == -1){
         return false;
     }
@@ -151,6 +234,7 @@ template<typename T> bool EmbeddablePlane<T>::stepForceDirected(){
 }
 
 template<typename T> bool EmbeddablePlane<T>::stepForceDirectedStable(){
+    if (planarLayout) return stepPlanar();
     if (currentIteration == -1)
         return false;
 
@@ -183,10 +267,12 @@ template<typename T> void EmbeddablePlane<T>::embedNode(Node<T> node, double x, 
 }
 
 template<typename T> void EmbeddablePlane<T>::embed(std::shared_ptr<const Graph<T>> graph){
-    
+    initEmbed(std::move(graph));
+    while (stepPlanar()) {}
 }
 
 template<typename T> bool EmbeddablePlane<T>::isEmbedding(){
+    if (planarLayout) return planarLayout->isRunning();
     return currentIteration != -1;
 }
 
@@ -205,20 +291,6 @@ std::vector<EdgeIntersection> EmbeddablePlane<T>::findEdgeIntersections() const 
     std::sort(edges.begin(), edges.end());
     edges.erase(std::unique(edges.begin(), edges.end()), edges.end());
 
-    const auto orientation = [](DoubleVector2 a, DoubleVector2 b, DoubleVector2 c) {
-        // Compute differences and products at higher precision; do not round
-        // positions to tiles or use a fixed map-unit epsilon for nearby edges.
-        const long double abX = static_cast<long double>(b.x) - a.x;
-        const long double abY = static_cast<long double>(b.y) - a.y;
-        const long double acX = static_cast<long double>(c.x) - a.x;
-        const long double acY = static_cast<long double>(c.y) - a.y;
-        return sign(abX * acY - abY * acX);
-    };
-    const auto onSegment = [](DoubleVector2 a, DoubleVector2 b, DoubleVector2 p) {
-        return p.x >= std::min(a.x, b.x) && p.x <= std::max(a.x, b.x)
-            && p.y >= std::min(a.y, b.y) && p.y <= std::max(a.y, b.y);
-    };
-
     std::vector<EdgeIntersection> intersections;
     for (size_t i = 0; i < edges.size(); ++i) {
         const auto& first = edges[i];
@@ -228,25 +300,10 @@ std::vector<EdgeIntersection> EmbeddablePlane<T>::findEdgeIntersections() const 
             const auto& second = edges[j];
             const auto c = this->getSpot(second.first).getCoords();
             const auto d = this->getSpot(second.second).getCoords();
-            const int abc = orientation(a, b, c);
-            const int abd = orientation(a, b, d);
-            const int cda = orientation(c, d, a);
-            const int cdb = orientation(c, d, b);
             const bool sharedVertex = first.first == second.first || first.first == second.second
                 || first.second == second.first || first.second == second.second;
 
-            if (sharedVertex) {
-                // A shared endpoint is legal. A collinear interval shared by
-                // incident edges is not; opposite rays only meet at the vertex.
-                const bool collinear = abc == 0 && abd == 0 && cda == 0 && cdb == 0;
-                const bool overlapX = std::max(std::min(a.x, b.x), std::min(c.x, d.x))
-                    < std::min(std::max(a.x, b.x), std::max(c.x, d.x));
-                const bool overlapY = std::max(std::min(a.y, b.y), std::min(c.y, d.y))
-                    < std::min(std::max(a.y, b.y), std::max(c.y, d.y));
-                if (collinear && (overlapX || overlapY)) intersections.push_back({first, second});
-            } else if ((abc * abd < 0 && cda * cdb < 0)
-                || (abc == 0 && onSegment(a, b, c)) || (abd == 0 && onSegment(a, b, d))
-                || (cda == 0 && onSegment(c, d, a)) || (cdb == 0 && onSegment(c, d, b))) {
+            if (planar::segmentsIntersect(a, b, c, d, sharedVertex)) {
                 intersections.push_back({first, second});
             }
         }

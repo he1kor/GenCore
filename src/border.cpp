@@ -383,7 +383,7 @@ Border::PossiblePass tiles::Border::generatePass(size_t i){
     PossiblePass result{
         .firstIndex = i,
         .secondIndex = *nextPassIndex[i].at(chosenWidth_i),
-        .width = i + params.minPassWidth
+        .width = chosenWidth_i + params.minPassWidth
     };
     
     for (size_t j = result.firstIndex; j < result.secondIndex; j++){
@@ -396,9 +396,11 @@ Border::PossiblePass tiles::Border::generatePass(size_t i){
 size_t tiles::Border::generateWall(size_t i){
     std::vector<uint64_t> lengthWeights;
     for (size_t right_i = i == 0 ? 0 : i + params.minWallLength; right_i < segments.size() && right_i <= i + params.maxWallLength; right_i++){
-        if (passStartingCombs.at(right_i) == 0) continue;
         lengthWeights.push_back(passStartingCombs.at(right_i));
     }
+    // The terminal wall can consume the remaining tail without another pass.
+    if (std::none_of(lengthWeights.begin(), lengthWeights.end(), [](uint64_t weight) { return weight != 0; }))
+        return segments.size() - 1;
     if (i == 0) return i + RandomGenerator::instance().takenIndex(lengthWeights);
     return i + params.minWallLength + RandomGenerator::instance().takenIndex(lengthWeights);
 }
@@ -406,6 +408,7 @@ size_t tiles::Border::generateWall(size_t i){
 void tiles::Border::generatePasses(){
     size_t i = 0;
     size_t size = segments.size();
+    if (size < 2 || (wallStartingCombs[0] == 0 && passStartingCombs[0] == 0)) return;
 
     bool isWallTurn = RandomGenerator::instance().takenIndex({wallStartingCombs[0], passStartingCombs[0]}) == 0;
 

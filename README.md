@@ -33,7 +33,7 @@ Zone bloat:
 /**
  * Generates a 128x128 map using a 3x3 grid template.
  * Steps:
- * 1. Embeds the template into a plane with force-directed layout.
+ * 1. Constructs a planar drawing and refines its geometry safely.
  * 2. Rasterizes the plane into a grid.
  * 3. Expands zones via Voronoi bloating.
  */
@@ -42,7 +42,7 @@ std::shared_ptr<Grid<BasicNode>> generateMap() {
     EmbeddablePlane<BasicNode> embedding(128, 128);
     embedding.initEmbed(templates::grid3x3);  // Predefined 3x3 grid
 
-    while (embedding.stepForceDirected()) {  // Runs until layout stabilizes
+    while (embedding.stepPlanar()) {  // Runs a bounded geometry refinement
         #if 0  // Debug: Uncomment to log positions
         for (const auto& id : embedding.getIDs()) { ... }
         #endif
@@ -76,6 +76,41 @@ Generation result:
 susceptibility for every node. Apply a magnet grid with `applyMagnetGrid` before
 stepping the embedding to enable magnetic placement.
 
+## Planar layout
+
+`initEmbed(graph, preferences, seed, topology)` now constructs a crossing-free
+drawing by default. Boyer-Myrvold checks planarity. A private augmented graph,
+temporary face centers and a virtual outer frame support a weighted harmonic
+initialization; Chrobak-Payne supplies an integer-drawing fallback. Added edges
+and vertices never become gameplay connections or growth seeds.
+
+Refinement uses PrEd-style separating half-planes for simultaneous node movement.
+The drawing is independently checked with filtered exact orientation predicates
+after each step. Completed results must also remain planar with distinct centers
+after flooring to tile coordinates. Dense layouts that cannot be separated at
+the requested tile resolution report a generation error.
+
+`EdgeGeometryMap` maps an undirected endpoint-ID pair to
+`EdgeGeometry{preferredCenterDistance, distanceWeight}`. Distances are soft
+preferences in plane/tile units, and the default zero distance selects spacing
+based on normalized node radii. Conflicting preferences are accepted. Magnets
+also act through constrained movements. Radii, lengths and forces do not
+guarantee final tile areas or passage widths.
+
+The bounding box is centered without stretching requested distances. An explicit
+local seed controls variation without consuming `RandomGenerator`'s stream.
+`planar::makeTopology(graph)` can cache the immutable topology for repeated runs.
+`embed(graph)` is the synchronous convenience entry point.
+
+`initForceDirected(graph)` retains the old unconstrained initializer for research
+and its regression tests. `stepForceDirected()` dispatches to the planar method
+when initialized with `initEmbed`; new code should call `stepPlanar()` explicitly.
+
+The private implementation uses Boost Graph and Multiprecision headers. CMake
+finds installed headers via `GENCORE_BOOST_INCLUDE_DIR`, or downloads the pinned,
+SHA-256-verified Boost 1.87 archive. No compiled Boost libraries are required.
+The Boost headers retain their Boost Software License.
+
 ## Embedding diagnostics
 
 `EmbeddablePlane<T>::findEdgeIntersections() const` checks all unique undirected
@@ -102,13 +137,16 @@ for (const auto& hit : intersections) {
 ```
 
 `warnEdgeIntersections(std::ostream& output = std::cerr) const` prints a summary
-and all offending pairs, returning the pair count. The final force-directed
-step calls it automatically, once per embedding run, before the caller proceeds
-to rasterization. It warns without rejecting or modifying the layout.
+and all offending pairs, returning the pair count. The legacy force-directed
+step calls it automatically at completion. The default planar path enforces
+validity throughout construction/refinement instead of warning and continuing.
 
 Enable `GENCORE_BUILD_TESTS` to build `embedding_intersection_regression`, which
 covers crossings, endpoint contacts, overlaps, shared vertices, close parallel
 edges, collapsed segments, deterministic results, and completion warnings.
+`planar_embedding_regression` additionally covers nonplanarity rejection,
+trees, articulation points, disconnected and nested graphs, small grids,
+preferences, centering, seed variation and independence from growth randomness.
 
 ## Resource mappings
 

@@ -21,7 +21,7 @@ static EmbeddablePlane<BasicNode> controlledGrid(double susceptibility, bool mag
     EmbeddablePlane<BasicNode> plane(128.0, 128.0);
     plane.setSize(128.0, 80.0);
     RandomGenerator::instance().setSeed(12419);
-    plane.initEmbed(graph);
+    plane.initForceDirected(graph);
     std::vector<Spot<BasicNode>> spots;
     for (int y = 0; y < 3; ++y) {
         for (int x = 0; x < 3; ++x) {

@@ -5,6 +5,7 @@
 #include <memory>
 #include <type_traits>
 #include <border.h>
+#include "embedding_parameters.h"
 
 class Blendable{
 public:
@@ -32,6 +33,7 @@ public:
 };
 
 struct BasicSymConnection : public Blendable, public tiles::PassParams{
+    EdgeGeometry geometry;
     BasicSymConnection() : Blendable(0), tiles::PassParams(){};
     BasicSymConnection(int blendableDistance, const tiles::PassParams& params) : Blendable(blendableDistance), tiles::PassParams(params){};
 };

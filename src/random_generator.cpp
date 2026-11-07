@@ -1,7 +1,7 @@
 #include "random_generator.h"
 
 #include <stdexcept>
-#include <numeric>
+#include <limits>
 
 RandomGenerator::RandomGenerator(){
     generateSeed();
@@ -23,7 +23,27 @@ bool RandomGenerator::chanceOccurred(double probability){
 }
 
 size_t RandomGenerator::takenIndex(const std::vector<uint64_t>& weightedItems){
-    uint64_t upper = std::accumulate(weightedItems.begin(), weightedItems.end(), 0);
+    uint64_t upper = 0;
+    bool overflow = false;
+    for (uint64_t weight : weightedItems) {
+        if (weight > std::numeric_limits<uint64_t>::max() - upper) { overflow = true; break; }
+        upper += weight;
+    }
+    if (overflow) {
+        long double total = 0;
+        for (uint64_t weight : weightedItems) total += weight;
+        const long double draw = std::uniform_real_distribution<long double>(0, total)(generator);
+        long double cumulative = 0;
+        size_t lastPositive = 0;
+        for (size_t i = 0; i < weightedItems.size(); ++i) {
+            if (!weightedItems[i]) continue;
+            lastPositive = i;
+            cumulative += weightedItems[i];
+            if (draw < cumulative) return i;
+        }
+        return lastPositive;
+    }
+    if (upper == 0) throw std::invalid_argument("Weighted sampling requires a positive weight");
     uint64_t sum = 0;
     uint64_t random = uint64Range(0, upper-1);
     for (size_t i = 0; i < weightedItems.size(); i++){

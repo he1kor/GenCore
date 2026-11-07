@@ -26,7 +26,7 @@ static EmbeddablePlane<BasicNode> layout(
     auto graph = std::make_shared<Graph<BasicNode>>(nodes);
     EmbeddablePlane<BasicNode> plane(128.0, 128.0);
     RandomGenerator::instance().setSeed(12419);
-    plane.initEmbed(graph);
+    plane.initForceDirected(graph);
     plane.setSpots(spots);
     return plane;
 }
@@ -68,7 +68,7 @@ static void completionWarning() {
     const auto cleanGraph = std::make_shared<Graph<BasicNode>>(
         std::vector<std::pair<BasicNode, std::vector<Identifiable>>>{
             {BasicNode(10, 0.0), {20}}, {BasicNode(20, 0.0), {10}}});
-    plane.initEmbed(cleanGraph);
+    plane.initForceDirected(cleanGraph);
     warnings.output.str("");
     while (plane.stepForceDirected()) {}
     require(warnings.output.str().empty(), "A clean embedding emitted a warning");
