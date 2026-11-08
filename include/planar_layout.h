@@ -59,7 +59,7 @@ class Layout {
 public:
     Layout(std::shared_ptr<const Topology> topology, const std::vector<double>& radii,
         const EdgeGeometryMap& preferences, double left, double top, double width, double height,
-        std::uint64_t seed);
+        std::uint64_t seed, const PositionMagnetMap& magnets = {});
     bool step(const std::vector<DoubleVector2>& extraForces = {});
     bool isRunning() const { return iteration < iterations; }
     const std::vector<DoubleVector2>& positions() const { return points; }
@@ -72,12 +72,17 @@ private:
     std::vector<double> desiredLengths;
     std::vector<double> edgeWeights;
     std::vector<double> nodeRadii;
+    std::vector<double> magnetForces;
+    std::vector<DoubleVector2> magnetTargets;
+    bool hasPositionMagnets = false;
     double left, top, width, height;
     int iteration = 0;
     static constexpr int iterations = 160;
     double bestScore = 0.0;
     void center(std::vector<DoubleVector2>& positions) const;
     double score(const std::vector<DoubleVector2>& positions) const;
+    void initializePositionMagnets();
+    void limitMagnetCrowding(std::vector<DoubleVector2>& movement) const;
 };
 
 } // namespace planar

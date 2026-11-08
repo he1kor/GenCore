@@ -50,7 +50,8 @@ class EmbeddablePlane : public Plane<T>{
         // Default: planar construction and topology-preserving refinement.
         void initEmbed(std::shared_ptr<const Graph<T>> graph, const EdgeGeometryMap& preferences = {},
             std::uint64_t seed = RandomGenerator::instance().getSeed(),
-            std::shared_ptr<const planar::Topology> topology = nullptr);
+            std::shared_ptr<const planar::Topology> topology = nullptr,
+            const PositionMagnetMap& positionMagnets = {});
         bool stepPlanar();
         // Legacy unconstrained algorithm, retained for comparisons.
         void initForceDirected(std::shared_ptr<const Graph<T>> graph);
@@ -107,7 +108,7 @@ class EmbeddablePlane : public Plane<T>{
 
 template<typename T>
 void EmbeddablePlane<T>::initEmbed(std::shared_ptr<const Graph<T>> graph, const EdgeGeometryMap& preferences,
-    std::uint64_t seed, std::shared_ptr<const planar::Topology> topology) {
+    std::uint64_t seed, std::shared_ptr<const planar::Topology> topology, const PositionMagnetMap& positionMagnets) {
     if (!graph) throw std::invalid_argument("No embedding graph supplied");
     if (!topology) topology = planar::makeTopology(*graph);
     std::vector<Identifiable> ids = graph->getIDs();
@@ -131,7 +132,7 @@ void EmbeddablePlane<T>::initEmbed(std::shared_ptr<const Graph<T>> graph, const 
         else radii.push_back(1.0);
     }
     planar::Layout layout(topology, radii, preferences, this->getLeftX(), this->getUpperY(),
-        this->getWidth(), this->getHeight(), seed);
+        this->getWidth(), this->getHeight(), seed, positionMagnets);
     currentGraph = std::move(graph);
     planarTopology = std::move(topology);
     planarLayout = std::move(layout);

@@ -87,7 +87,7 @@ double clearance(const std::vector<DoubleVector2>& points, const std::vector<Edg
 
 Layout::Layout(std::shared_ptr<const Topology> topology, const std::vector<double>& radii,
     const EdgeGeometryMap& preferences, double left, double top, double width, double height,
-    std::uint64_t seed)
+    std::uint64_t seed, const PositionMagnetMap& magnets)
     : topology(std::move(topology)), left(left), top(top), width(width), height(height) {
     if (!this->topology || !std::isfinite(left) || !std::isfinite(top)
         || !std::isfinite(width) || !std::isfinite(height) || !std::isfinite(width * height)
@@ -134,6 +134,22 @@ Layout::Layout(std::shared_ptr<const Topology> topology, const std::vector<doubl
         edgeWeights.push_back(preference.distanceWeight / std::max(1.0, largestWeight / 1e4));
     }
 
+    magnetForces.assign(n, 0);
+    magnetTargets.resize(n);
+    for (const auto& [id, magnet] : magnets) {
+        const auto it = std::lower_bound(graph.ids.begin(), graph.ids.end(), id);
+        if (it == graph.ids.end() || *it != id) throw std::invalid_argument("Position magnet references a missing node");
+        if (!std::isfinite(magnet.force) || magnet.force <= 0
+            || !std::isfinite(magnet.position.x) || !std::isfinite(magnet.position.y))
+            throw std::invalid_argument("Position magnets need finite coordinates and positive force");
+        if (magnet.position.x < 0 || magnet.position.x > 1 || magnet.position.y < 0 || magnet.position.y > 1) continue;
+        const auto index = it - graph.ids.begin();
+        magnetForces[index] = magnet.force;
+        magnetTargets[index] = {left + std::clamp(magnet.position.x * width, 0.5, width - 0.5),
+            top + std::clamp(magnet.position.y * height, 0.5, height - 0.5)};
+        hasPositionMagnets = true;
+    }
+
     std::mt19937_64 random(seed);
     if (n < 3) {
         for (size_t i = 0; i < n; ++i) points.emplace_back(left + width / 2 + (double(i) - (n - 1) / 2.0)
@@ -174,6 +190,7 @@ Layout::Layout(std::shared_ptr<const Topology> topology, const std::vector<doubl
     }
     if (points.size() != n || !validDrawing(points, graph.edges))
         throw std::runtime_error("Could not construct a non-degenerate planar drawing");
+    if (hasPositionMagnets) initializePositionMagnets();
     shapeTargets = points;
     std::uniform_real_distribution<double> jitter(-0.07, 0.07);
     for (auto& p : shapeTargets) {
@@ -186,6 +203,65 @@ Layout::Layout(std::shared_ptr<const Topology> topology, const std::vector<doubl
     if (!bestRasterPoints.empty()) bestScore = score(bestRasterPoints);
 }
 
+void Layout::initializePositionMagnets() {
+    const auto original = points;
+    std::vector<size_t> degree(points.size());
+    for (auto [a,b] : topology->edges) { ++degree[a]; ++degree[b]; }
+    std::vector<DoubleVector2> best;
+    double quality = std::numeric_limits<double>::infinity();
+    const auto valid = [&](const auto& candidate) {
+        return validDrawing(candidate, topology->edges)
+            && validRasterDrawing(candidate, topology->edges, left, top, width, height);
+    };
+    const auto consider = [&](const auto& candidate) {
+        if (!valid(candidate)) return;
+        const double value = score(candidate);
+        if (value < quality) { quality = value; best = candidate; }
+    };
+    consider(original);
+    // Choose orientation before topology-preserving movement begins. A leaf's
+    // face is not specified by graph connectivity: its explicit target can
+    // select another face here, provided the completed drawing is planar.
+    // Never force a leaf to traverse a surrounding cycle during relaxation.
+    for (bool mirror : {false, true}) for (int angle = 0; angle < 32; ++angle) {
+        const double theta = 2 * std::numbers::pi * angle / 32;
+        const double cosine = std::cos(theta), sine = std::sin(theta);
+        auto candidate = original;
+        double maxX = 0, maxY = 0;
+        for (auto& p : candidate) {
+            const double x = (p.x - left - width / 2) * (mirror ? -1 : 1), y = p.y - top - height / 2;
+            p = {cosine * x - sine * y, sine * x + cosine * y};
+            maxX = std::max(maxX, std::abs(p.x)); maxY = std::max(maxY, std::abs(p.y));
+        }
+        const double fit = std::min({1.0, (width / 2 - 1) / std::max(1e-9, maxX),
+            (height / 2 - 1) / std::max(1e-9, maxY)});
+        for (auto& p : candidate) p = {left + width / 2 + fit * p.x, top + height / 2 + fit * p.y};
+        consider(candidate);
+        auto allTargets = candidate;
+        auto leaves = candidate;
+        for (size_t i = 0; i < points.size(); ++i) if (magnetForces[i] > 0) {
+            allTargets[i] = magnetTargets[i];
+            if (degree[i] <= 1) leaves[i] = magnetTargets[i];
+        }
+        consider(allTargets);
+        consider(leaves);
+        // Interior targets may be feasible individually even if setting all
+        // of them at once creates a crossing. Unreachable ones remain soft.
+        if (!valid(leaves)) leaves = candidate;
+        for (size_t i = 0; i < points.size(); ++i) if (magnetForces[i] > 0) {
+            auto next = leaves;
+            next[i] = magnetTargets[i];
+            if (valid(next)) leaves = std::move(next);
+        }
+        consider(leaves);
+    }
+    if (!best.empty()) {
+        points = std::move(best);
+        bestRasterPoints = points;
+        bestScore = quality;
+    }
+}
+
 void Layout::center(std::vector<DoubleVector2>& positions) const {
     if (positions.empty()) return;
     double minX = positions[0].x, maxX = minX, minY = positions[0].y, maxY = minY;
@@ -196,6 +272,27 @@ void Layout::center(std::vector<DoubleVector2>& positions) const {
     const double dx = left + width / 2 - (minX + maxX) / 2;
     const double dy = top + height / 2 - (minY + maxY) / 2;
     for (auto& p : positions) { p.x += dx; p.y += dy; }
+}
+
+void Layout::limitMagnetCrowding(std::vector<DoubleVector2>& movement) const {
+    std::vector<double> fraction(points.size(), 1.0);
+    for (size_t a = 0; a < points.size(); ++a) for (size_t b = 0; b < a; ++b) {
+        if (magnetForces[a] == 0 && magnetForces[b] == 0) continue;
+        const auto delta = difference(points[b], points[a]);
+        const double d = std::max(1e-9, length(delta));
+        // A held seed needs room around it: otherwise the central repulsion
+        // can push an unanchored neighbor directly onto its target. Do not
+        // increase an existing overlap or change non-magnetic zone pairs.
+        const double radius = 0.75 * (nodeRadii[a] + nodeRadii[b]);
+        const double allowance = 0.45 * std::max(0.0, d - radius);
+        const double towardA = (movement[a].x * delta.x + movement[a].y * delta.y) / d;
+        const double towardB = -(movement[b].x * delta.x + movement[b].y * delta.y) / d;
+        if (towardA > allowance) fraction[a] = std::min(fraction[a], allowance / towardA);
+        if (towardB > allowance) fraction[b] = std::min(fraction[b], allowance / towardB);
+    }
+    for (size_t i = 0; i < points.size(); ++i) {
+        movement[i].x *= fraction[i]; movement[i].y *= fraction[i];
+    }
 }
 
 double Layout::score(const std::vector<DoubleVector2>& positions) const {
@@ -215,6 +312,10 @@ double Layout::score(const std::vector<DoubleVector2>& positions) const {
         if (shapeTargets.size() == positions.size()) {
             const auto delta = difference(positions[i], shapeTargets[i]);
             result += 0.0075 * (delta.x * delta.x + delta.y * delta.y) / scale;
+        }
+        if (hasPositionMagnets && magnetForces[i] > 0) {
+            const auto delta = difference(positions[i], magnetTargets[i]);
+            result += 0.5 * magnetForces[i] * (delta.x * delta.x + delta.y * delta.y) / scale;
         }
     }
     return result;
@@ -250,6 +351,13 @@ bool Layout::step(const std::vector<DoubleVector2>& extraForces) {
             if (extraForces.size() != points.size()) throw std::invalid_argument("Wrong number of embedding forces");
             movement[i].x += extraForces[i].x; movement[i].y += extraForces[i].y;
         }
+        if (hasPositionMagnets && magnetForces[i] > 0) {
+            const double force = magnetForces[i];
+            // An implicit spring step avoids overshoot at high strengths.
+            // The existing movement bounds still protect edges and tile seeds.
+            movement[i].x = (movement[i].x + force * (magnetTargets[i].x - points[i].x)) / (1 + force);
+            movement[i].y = (movement[i].y + force * (magnetTargets[i].y - points[i].y)) / (1 + force);
+        }
         const double maxStep = std::min(width, height) * 0.02 * (1.0 - 0.8 * iteration / iterations);
         const double magnitude = length(movement[i]);
         if (!std::isfinite(magnitude)) throw std::invalid_argument("Non-finite embedding force");
@@ -263,12 +371,13 @@ bool Layout::step(const std::vector<DoubleVector2>& extraForces) {
         fraction = std::clamp(fraction, 0.0, 1.0);
         movement[i].x *= fraction; movement[i].y *= fraction;
     }
+    if (hasPositionMagnets) limitMagnetCrowding(movement);
     limitDisplacements(points, topology->edges, movement);
     auto candidate = points;
     for (size_t i = 0; i < points.size(); ++i) {
         candidate[i].x += movement[i].x; candidate[i].y += movement[i].y;
     }
-    center(candidate);
+    if (!hasPositionMagnets) center(candidate);
     // Independent validation also guards finite-precision errors in movement bounds.
     if (validDrawing(candidate, topology->edges)) points = std::move(candidate);
     const double quality = score(points);
