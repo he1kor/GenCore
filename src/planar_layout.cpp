@@ -87,8 +87,8 @@ double clearance(const std::vector<DoubleVector2>& points, const std::vector<Edg
 
 Layout::Layout(std::shared_ptr<const Topology> topology, const std::vector<double>& radii,
     const EdgeGeometryMap& preferences, double left, double top, double width, double height,
-    std::uint64_t seed, const PositionMagnetMap& magnets)
-    : topology(std::move(topology)), left(left), top(top), width(width), height(height) {
+    std::uint64_t seed, const PositionMagnetMap& magnets, std::shared_ptr<const Reflection> reflection, bool preserveSymmetry)
+    : topology(std::move(topology)), reflection(std::move(reflection)), left(left), top(top), width(width), height(height) {
     if (!this->topology || !std::isfinite(left) || !std::isfinite(top)
         || !std::isfinite(width) || !std::isfinite(height) || !std::isfinite(width * height)
         || width < 2 || height < 2)
@@ -151,7 +151,8 @@ Layout::Layout(std::shared_ptr<const Topology> topology, const std::vector<doubl
     }
 
     std::mt19937_64 random(seed);
-    if (n < 3) {
+    if (this->reflection) initializeSymmetric(seed);
+    else if (n < 3) {
         for (size_t i = 0; i < n; ++i) points.emplace_back(left + width / 2 + (double(i) - (n - 1) / 2.0)
             * std::min(width * 0.5, n == 2 && !desiredLengths.empty() ? desiredLengths[0] : width / 3), top + height / 2);
     } else {
@@ -190,14 +191,26 @@ Layout::Layout(std::shared_ptr<const Topology> topology, const std::vector<doubl
     }
     if (points.size() != n || !validDrawing(points, graph.edges))
         throw std::runtime_error("Could not construct a non-degenerate planar drawing");
-    if (hasPositionMagnets) initializePositionMagnets();
+    if (hasPositionMagnets && !this->reflection) initializePositionMagnets();
+    protectSymmetricClearance=bool(this->reflection);
+    if (protectSymmetricClearance)
+        minimumClearance=std::min(1.5,0.5*clearance(points,graph.edges));
+    // Face-only mode keeps the initial planar face choices, then releases the
+    // coordinate constraint before adding independent shape jitter and forces.
+    if (!preserveSymmetry) this->reflection.reset();
     shapeTargets = points;
     std::uniform_real_distribution<double> jitter(-0.07, 0.07);
     for (auto& p : shapeTargets) {
         p.x += jitter(random) * std::sqrt(width * height / n);
         p.y += jitter(random) * std::sqrt(width * height / n);
     }
-    if (bestRasterPoints.empty() && validRasterDrawing(points, graph.edges, left, top, width, height)) {
+    if (this->reflection) {
+        auto jittered = shapeTargets;
+        for (size_t i = 0; i < n; ++i) jittered[i] = difference(jittered[i], points[i]);
+        symmetricVectors(jittered);
+        for (size_t i = 0; i < n; ++i) shapeTargets[i] = {points[i].x + jittered[i].x, points[i].y + jittered[i].y};
+    }
+    if (bestRasterPoints.empty() && validRasterCandidate(points)) {
         bestRasterPoints = points;
     }
     if (!bestRasterPoints.empty()) bestScore = score(bestRasterPoints);
@@ -358,6 +371,7 @@ bool Layout::step(const std::vector<DoubleVector2>& extraForces) {
             movement[i].x = (movement[i].x + force * (magnetTargets[i].x - points[i].x)) / (1 + force);
             movement[i].y = (movement[i].y + force * (magnetTargets[i].y - points[i].y)) / (1 + force);
         }
+        if (reflection) continue; // Project all forces before applying coupled limits.
         const double maxStep = std::min(width, height) * 0.02 * (1.0 - 0.8 * iteration / iterations);
         const double magnitude = length(movement[i]);
         if (!std::isfinite(magnitude)) throw std::invalid_argument("Non-finite embedding force");
@@ -371,19 +385,34 @@ bool Layout::step(const std::vector<DoubleVector2>& extraForces) {
         fraction = std::clamp(fraction, 0.0, 1.0);
         movement[i].x *= fraction; movement[i].y *= fraction;
     }
-    if (hasPositionMagnets) limitMagnetCrowding(movement);
-    limitDisplacements(points, topology->edges, movement);
+    if (reflection) {
+        symmetricVectors(movement);
+        limitSymmetricBounds(movement);
+        if (hasPositionMagnets) {
+            const auto proposed = movement;
+            limitMagnetCrowding(movement);
+            coupleLimits(proposed, movement);
+        }
+        const auto proposed = movement;
+        limitDisplacements(points, topology->edges, movement, minimumClearance);
+        coupleLimits(proposed, movement);
+    } else {
+        if (hasPositionMagnets) limitMagnetCrowding(movement);
+        limitDisplacements(points, topology->edges, movement, minimumClearance);
+    }
     auto candidate = points;
     for (size_t i = 0; i < points.size(); ++i) {
         candidate[i].x += movement[i].x; candidate[i].y += movement[i].y;
     }
-    if (!hasPositionMagnets) center(candidate);
+    if (!hasPositionMagnets && !reflection) center(candidate);
     // Independent validation also guards finite-precision errors in movement bounds.
-    if (validDrawing(candidate, topology->edges)) points = std::move(candidate);
+    if (validDrawing(candidate, topology->edges)
+        && (!protectSymmetricClearance || clearance(candidate,topology->edges)>=minimumClearance*(1-1e-8)))
+        points = std::move(candidate);
     const double quality = score(points);
     const bool external = std::any_of(extraForces.begin(), extraForces.end(),
         [](DoubleVector2 force) { return force.x != 0 || force.y != 0; });
-    if (validRasterDrawing(points, topology->edges, left, top, width, height)
+    if (validRasterCandidate(points)
         && (bestRasterPoints.empty() || quality < bestScore || external)) {
         bestScore = quality;
         bestRasterPoints = points;
@@ -393,7 +422,7 @@ bool Layout::step(const std::vector<DoubleVector2>& extraForces) {
             throw std::runtime_error("Could not find a planar drawing that survives tile rounding at this size; choose a larger map");
         points = bestRasterPoints;
         if (!validDrawing(points, topology->edges)
-            || !validRasterDrawing(points, topology->edges, left, top, width, height))
+            || !validRasterCandidate(points))
             throw std::logic_error("Invalid final planar embedding");
     }
     return true;

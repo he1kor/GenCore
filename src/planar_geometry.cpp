@@ -105,7 +105,7 @@ bool validRasterDrawing(const std::vector<DoubleVector2>& points, const std::vec
 }
 
 void limitDisplacements(const std::vector<DoubleVector2>& points, const std::vector<Edge>& edges,
-    std::vector<DoubleVector2>& movement) {
+    std::vector<DoubleVector2>& movement, double minimumClearance) {
     if (movement.size() != points.size()) throw std::invalid_argument("Wrong number of node displacements");
     std::vector<double> fraction(points.size(), 1.0);
     const auto constrain = [&](size_t node, DoubleVector2 normal, double allowance) {
@@ -121,17 +121,19 @@ void limitDisplacements(const std::vector<DoubleVector2>& points, const std::vec
             if (distance == 0) throw std::logic_error("Cannot refine a node lying on another edge");
             const DoubleVector2 n = {difference.x / distance, difference.y / distance};
             // Both sides stay strictly separated throughout the entire step.
-            constrain(v, {-n.x, -n.y}, 0.45 * distance);
-            constrain(a, n, 0.45 * distance - dot(n, subtract(points[a], q)));
-            constrain(b, n, 0.45 * distance - dot(n, subtract(points[b], q)));
+            const double allowance=0.45*std::max(0.0,distance-minimumClearance);
+            constrain(v, {-n.x, -n.y}, allowance);
+            constrain(a, n, allowance - dot(n, subtract(points[a], q)));
+            constrain(b, n, allowance - dot(n, subtract(points[b], q)));
         }
         for (size_t u = 0; u < v; ++u) {
             const auto difference = subtract(points[v], points[u]);
             const double distance = std::hypot(difference.x, difference.y);
             if (distance == 0) throw std::logic_error("Cannot refine coincident nodes");
             const DoubleVector2 n = {difference.x / distance, difference.y / distance};
-            constrain(v, {-n.x, -n.y}, 0.45 * distance);
-            constrain(u, n, 0.45 * distance);
+            const double allowance=0.45*std::max(0.0,distance-minimumClearance);
+            constrain(v, {-n.x, -n.y}, allowance);
+            constrain(u, n, allowance);
         }
     }
     for (size_t v = 0; v < points.size(); ++v) {

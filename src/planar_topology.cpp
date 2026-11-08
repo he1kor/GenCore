@@ -109,6 +109,12 @@ std::shared_ptr<const Topology> makeTopology(std::vector<Identifiable> ids,
     if (!embed(graph, embedding)) throw std::logic_error("Connected augmentation lost planarity");
     boost::make_biconnected_planar(graph, embedding.data());
     if (!embed(graph, embedding)) throw std::logic_error("Biconnected augmentation lost planarity");
+    result->rotation.resize(ids.size());
+    for (size_t v = 0; v < ids.size(); ++v) for (auto edge : embedding[v]) {
+        const size_t a = boost::source(edge, graph), b = boost::target(edge, graph);
+        const size_t u = a == v ? b : a;
+        if (unique.contains({std::min(v,u),std::max(v,u)})) result->rotation[v].push_back(u);
+    }
     auto faceCycles = faces(graph, embedding);
     const size_t outer = std::max_element(faceCycles.begin(), faceCycles.end(),
         [](const auto& a, const auto& b) { return a.size() < b.size(); }) - faceCycles.begin();
