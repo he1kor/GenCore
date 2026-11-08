@@ -29,6 +29,9 @@ class ZoneBloater : public Simulator, public ZoneTilePusher{
         void finishAndReset();
 
         std::shared_ptr<Grid<T>> getGrid() const;
+        void setPlacementConstraint(std::function<bool(const ZoneTile&)> constraint) {
+            placementConstraint = std::move(constraint);
+        }
 
         template <typename Strategy>
         requires std::is_base_of_v<BloatStrategy, std::decay_t<Strategy>>
@@ -40,6 +43,7 @@ class ZoneBloater : public Simulator, public ZoneTilePusher{
         bool isEmpty(IntVector2 point) const override;
         bool isValidPoint(IntVector2 point) const override;
         std::optional<Identifiable> tryGetID(IntVector2 point) const override;
+        bool canPlace(const ZoneTile& zoneTile) const override;
     private:
 
         std::shared_ptr<Grid<T>> grid;
@@ -49,6 +53,7 @@ class ZoneBloater : public Simulator, public ZoneTilePusher{
         int currentStepSize = 0;
 
         std::unique_ptr<BloatStrategy> bloatStrategy;
+        std::function<bool(const ZoneTile&)> placementConstraint;
 
     private:
         void setEdgeExpanders(const std::unordered_map<Identifiable, IntVector2, IDHash>& startingPoints, const EdgeGraph<T, SymEdgeT, AsymEdgeT>& graph);
@@ -108,6 +113,7 @@ void ZoneBloater<T, SymEdgeT, AsymEdgeT>::onStep(){
     for (int i = 0; i < currentStepSize; i++){
         std::shared_ptr<ZoneTile> activeTile = nextExpanders.front();
         nextExpanders.pop();
+        if (!canPlace(*activeTile)) continue;
         bloatStrategy->bloat(*activeTile);
     }
     if (nextExpanders.empty())
@@ -144,12 +150,19 @@ void ZoneBloater<T, SymEdgeT, AsymEdgeT>::setBloatMode(Strategy&& bloatStrategy)
 
 template <typename T, typename SymEdgeT, typename AsymEdgeT>
 void ZoneBloater<T, SymEdgeT, AsymEdgeT>::push(const ZoneTile& zoneTile){
+    if (!canPlace(zoneTile)) return;
     nextExpanders.push(std::make_shared<ZoneTile>(zoneTile.x, zoneTile.y, zoneTile.zoneID));
 }
 
 template <typename T, typename SymEdgeT, typename AsymEdgeT>
 void ZoneBloater<T, SymEdgeT, AsymEdgeT>::setZoneTile(const ZoneTile &zoneTile){
+    if (!canPlace(zoneTile)) return;
     grid->setTile(zoneTile.x, zoneTile.y, zoneTile.zoneID);
+}
+
+template <typename T, typename SymEdgeT, typename AsymEdgeT>
+bool ZoneBloater<T, SymEdgeT, AsymEdgeT>::canPlace(const ZoneTile& zoneTile) const {
+    return !placementConstraint || placementConstraint(zoneTile);
 }
 
 template <typename T, typename SymEdgeT, typename AsymEdgeT>

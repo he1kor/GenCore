@@ -31,6 +31,7 @@ public:
     virtual bool isEmpty(IntVector2 point) const = 0;
     virtual std::optional<Identifiable> tryGetID(IntVector2 point) const = 0;
     virtual bool isValidPoint(IntVector2 point) const = 0;
+    virtual bool canPlace(const ZoneTile& zoneTile) const { return true; }
 };
 
 class BloatStrategy{

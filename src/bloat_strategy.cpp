@@ -186,10 +186,10 @@ void bloatStrategies::AdjacentCornerFill::bloat(const ZoneTile &activeTile){
     auto right = ref.tryGetID({x+1, y}).value_or(Identifiable::nullID);
     auto bottom = ref.tryGetID({x, y+1}).value_or(Identifiable::nullID);
 
-    bool upperLeft = upper != Identifiable::nullID && upper == left;
-    bool upperRight = upper != Identifiable::nullID && upper == right;
-    bool bottomRight = bottom != Identifiable::nullID && bottom == right;
-    bool bottomLeft = bottom != Identifiable::nullID && bottom == left;
+    bool upperLeft = upper != Identifiable::nullID && upper == left && ref.canPlace({x, y, left});
+    bool upperRight = upper != Identifiable::nullID && upper == right && ref.canPlace({x, y, right});
+    bool bottomRight = bottom != Identifiable::nullID && bottom == right && ref.canPlace({x, y, right});
+    bool bottomLeft = bottom != Identifiable::nullID && bottom == left && ref.canPlace({x, y, left});
 
     //if No adjacent corners
     if (!(upperLeft || upperRight || bottomRight || bottomLeft))
