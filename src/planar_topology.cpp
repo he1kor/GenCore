@@ -114,6 +114,7 @@ std::shared_ptr<const Topology> makeTopology(std::vector<Identifiable> ids,
         [](const auto& a, const auto& b) { return a.size() < b.size(); }) - faceCycles.begin();
     auto perimeter = faceCycles[outer];
     std::reverse(perimeter.begin(), perimeter.end());
+    result->outerFace = perimeter;
     std::set<Edge> scaffold;
     const auto add = [&](size_t a, size_t b) { scaffold.emplace(std::min(a, b), std::max(a, b)); };
     for (auto [it, end] = boost::edges(graph); it != end; ++it)

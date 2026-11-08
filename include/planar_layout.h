@@ -23,6 +23,9 @@ struct Topology {
     std::vector<Edge> edges;
     std::vector<Edge> scaffoldEdges;
     std::vector<size_t> boundary;
+    // Real vertices around the outer face, before adding the private frame.
+    // Editors can use this order for a rectangular diagram boundary.
+    std::vector<size_t> outerFace;
     size_t scaffoldSize = 0;
     std::vector<DoubleVector2> gridDrawing;
 };
