@@ -140,7 +140,7 @@ class Search {
             const DoubleVector2 p{(positions[i].x-positions[j].x)/2,(positions[i].y+positions[j].y)/2};
             positions[i]=p;positions[j]={-p.x,p.y};
         }
-        if (!validDrawing(positions,topology.edges)) return {};
+        if (!validDrawing(positions,topology.edges) || !validBoundaryDrawing(positions,topology)) return {};
         return positions;
     }
 
@@ -261,7 +261,7 @@ class Search {
             drawing[v] = positions[halfIndex[v]];
             drawing[partner[v]] = {-drawing[v].x,drawing[v].y};
         }
-        if (!validDrawing(drawing,topology.edges)) return {};
+        if (!validDrawing(drawing,topology.edges) || !validBoundaryDrawing(drawing,topology)) return {};
         double minY = drawing[0].y, maxY = minY;
         for (auto p : drawing) { minY = std::min(minY,p.y); maxY = std::max(maxY,p.y); }
         for (auto& p : drawing) p.y -= (minY+maxY)/2;
@@ -349,6 +349,10 @@ class Search {
 
     bool allowed(size_t a, size_t b) const {
         if (partner[b] != n || colors[a] != colors[b]) return false;
+        if(!topology.nodeBoundary.empty()) {
+            const auto x=topology.nodeBoundary[a],y=topology.nodeBoundary[b];
+            if(x!=BoundaryPlacement::Any&&y!=BoundaryPlacement::Any&&x!=y)return false;
+        }
         for (size_t v = 0; v < n; ++v) if (partner[v] != n)
             if (adjacent[a][v] != adjacent[b][partner[v]] || adjacent[b][v] != adjacent[a][partner[v]]) return false;
         if (a == b) {
@@ -433,7 +437,9 @@ public:
         if (settingsRejected && !matchingSettings) throw ConflictingSymmetrySettings("No reflection has matching paired zone and connection settings.");
         if (structuralReflection && gridAligned) throw ConflictingSymmetryMagnets("Complete symmetry needs magnet targets reflected about a grid axis through the map center: horizontal or vertical, or either diagonal on square maps. Move the magnets or enable Random magnet rotation.");
         if (structuralReflection) throw ConflictingSymmetryMagnets("The graph has reflection symmetry, but its saved magnet targets do not mirror about one line through the map center. Move or disable the conflicting magnets.");
-        throw NoReflection("No planar reflection symmetry was found in the graph topology. Choose No symmetry or change the connections.");
+        throw NoReflection(topology.nodeBoundary.empty()
+            ?"No planar reflection symmetry was found in the graph topology. Choose No symmetry or change the connections."
+            :"No planar reflection compatible with the boundary placement rules was certified. Check Outer/Inner settings, choose No symmetry, or change the connections.");
     }
 };
 } // namespace

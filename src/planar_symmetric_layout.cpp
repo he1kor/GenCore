@@ -11,6 +11,11 @@ namespace planar {
 
 bool Layout::validRasterCandidate(const std::vector<DoubleVector2>& positions) const {
     if(!validRasterDrawing(positions,topology->edges,left,top,width,height))return false;
+    if(!topology->nodeBoundary.empty()) {
+        std::vector<DoubleVector2> raster;
+        for(auto p:positions)raster.emplace_back(std::floor(p.x-left),std::floor(p.y-top));
+        if(!validBoundaryDrawing(positions,*topology)||!validBoundaryDrawing(raster,*topology))return false;
+    }
     if(!reflection||!reflection->gridAligned)return true;
     const int columns=static_cast<int>(width),rows=static_cast<int>(height);
     const auto axis=tileAxisForNormal(symmetryNormal,width,height);
@@ -79,7 +84,8 @@ void Layout::limitSymmetricBounds(std::vector<DoubleVector2>& movement) const {
 void Layout::initializeSymmetric(std::uint64_t seed) {
     const size_t n = topology->ids.size();
     if (reflection->partner.size() != n || reflection->drawing.size() != n
-        || !validDrawing(reflection->drawing,topology->edges)) throw std::invalid_argument("Invalid symmetric drawing supplied");
+        || !validDrawing(reflection->drawing,topology->edges)
+        || !validBoundaryDrawing(reflection->drawing,*topology)) throw std::invalid_argument("Invalid symmetric drawing or boundary placement supplied");
     for (size_t i = 0; i < n; ++i)
         if (reflection->partner[i] >= n || reflection->partner[reflection->partner[i]] != i)
             throw std::invalid_argument("Invalid reflection pairing supplied");
@@ -141,7 +147,7 @@ void Layout::initializeSymmetric(std::uint64_t seed) {
     double bestValue = std::numeric_limits<double>::infinity(), geometricValue = bestValue;
     DoubleVector2 bestNormal{1,0}, geometricNormal{1,0};
     const auto consider = [&](const std::vector<DoubleVector2>& candidate) {
-        if (!validDrawing(candidate,topology->edges)) return;
+        if (!validDrawing(candidate,topology->edges) || !validBoundaryDrawing(candidate,*topology)) return;
         for (auto p : candidate) if (p.x < left+.5 || p.x > left+width-.5 || p.y < top+.5 || p.y > top+height-.5) return;
         const double value = score(candidate);
         if (value < geometricValue) { geometricValue=value; geometric=candidate; geometricNormal=symmetryNormal; }

@@ -162,10 +162,10 @@ Layout::Layout(std::shared_ptr<const Topology> topology, const std::vector<doubl
             if (candidate.empty()) continue;
             for (auto& p : candidate) { p.x += left; p.y += top; }
             center(candidate);
-            if (!validDrawing(candidate, graph.edges)) continue;
+            if (!validDrawing(candidate, graph.edges) || !validBoundaryDrawing(candidate, graph)) continue;
             const double separation = clearance(candidate, graph.edges);
             if (separation > bestClearance) { points = candidate; bestClearance = separation; }
-            if (validRasterDrawing(candidate, graph.edges, left, top, width, height)
+            if (validRasterCandidate(candidate)
                 && (bestRasterPoints.empty() || score(candidate) < bestScore)) {
                 bestScore = score(candidate);
                 bestRasterPoints = std::move(candidate);
@@ -180,16 +180,16 @@ Layout::Layout(std::shared_ptr<const Topology> topology, const std::vector<doubl
         if (factor >= 1.0) factor = std::floor(factor); // Preserve the integer grid under tile rounding.
         for (auto& p : fallback) { p.x = left + 1 + p.x * factor; p.y = top + 1 + p.y * factor; }
         center(fallback);
-        if (validDrawing(fallback, graph.edges)) {
+        if (validDrawing(fallback, graph.edges) && validBoundaryDrawing(fallback, graph)) {
             if (points.empty()) points = fallback;
-            if (bestRasterPoints.empty() && validRasterDrawing(fallback, graph.edges, left, top, width, height)) {
+            if (bestRasterPoints.empty() && validRasterCandidate(fallback)) {
                 bestScore = score(fallback);
                 bestRasterPoints = fallback;
             }
         }
         if (!bestRasterPoints.empty()) points = bestRasterPoints;
     }
-    if (points.size() != n || !validDrawing(points, graph.edges))
+    if (points.size() != n || !validDrawing(points, graph.edges) || !validBoundaryDrawing(points, graph))
         throw std::runtime_error("Could not construct a non-degenerate planar drawing");
     if (hasPositionMagnets && !this->reflection) initializePositionMagnets();
     protectSymmetricClearance=bool(this->reflection);
@@ -224,7 +224,7 @@ void Layout::initializePositionMagnets() {
     double quality = std::numeric_limits<double>::infinity();
     const auto valid = [&](const auto& candidate) {
         return validDrawing(candidate, topology->edges)
-            && validRasterDrawing(candidate, topology->edges, left, top, width, height);
+            && validBoundaryDrawing(candidate, *topology) && validRasterCandidate(candidate);
     };
     const auto consider = [&](const auto& candidate) {
         if (!valid(candidate)) return;
@@ -406,7 +406,7 @@ bool Layout::step(const std::vector<DoubleVector2>& extraForces) {
     }
     if (!hasPositionMagnets && !reflection) center(candidate);
     // Independent validation also guards finite-precision errors in movement bounds.
-    if (validDrawing(candidate, topology->edges)
+    if (validDrawing(candidate, topology->edges) && validBoundaryDrawing(candidate, *topology)
         && (!protectSymmetricClearance || clearance(candidate,topology->edges)>=minimumClearance*(1-1e-8)))
         points = std::move(candidate);
     const double quality = score(points);

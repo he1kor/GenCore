@@ -65,7 +65,8 @@ std::vector<std::vector<size_t>> faces(const BoostGraph& graph, const Embedding&
 } // namespace
 
 std::shared_ptr<const Topology> makeTopology(std::vector<Identifiable> ids,
-    const std::vector<std::pair<Identifiable, Identifiable>>& inputEdges) {
+    const std::vector<std::pair<Identifiable, Identifiable>>& inputEdges, const NodeBoundaryMap& boundary,
+    std::chrono::milliseconds boundarySearchTimeLimit) {
     auto result = std::make_shared<Topology>();
     std::sort(ids.begin(), ids.end());
     if (std::adjacent_find(ids.begin(), ids.end()) != ids.end())
@@ -82,10 +83,21 @@ std::shared_ptr<const Topology> makeTopology(std::vector<Identifiable> ids,
         unique.emplace(std::min(u, v), std::max(u, v));
     }
     result->edges.assign(unique.begin(), unique.end());
+    for (const auto& [id, placement] : boundary) {
+        if (!indices.contains(id)) throw std::invalid_argument("Boundary rule references a missing node");
+        if (placement != BoundaryPlacement::Any && placement != BoundaryPlacement::Outer && placement != BoundaryPlacement::Inner)
+            throw std::invalid_argument("Unknown node boundary placement");
+        if (placement == BoundaryPlacement::Any) continue;
+        if (result->nodeBoundary.empty()) result->nodeBoundary.resize(ids.size(), BoundaryPlacement::Any);
+        result->nodeBoundary[indices.at(id)] = placement;
+    }
     result->scaffoldSize = ids.size();
     if (ids.size() < 3) {
-        result->scaffoldEdges = result->edges;
-        for (size_t i = 0; i < ids.size(); ++i) result->gridDrawing.emplace_back(i, 0);
+        if (!result->nodeBoundary.empty()) constrainBoundary(*result,boundarySearchTimeLimit);
+        else {
+            result->scaffoldEdges = result->edges;
+            for (size_t i = 0; i < ids.size(); ++i) result->gridDrawing.emplace_back(i, 0);
+        }
         return result;
     }
 
@@ -101,6 +113,11 @@ std::shared_ptr<const Topology> makeTopology(std::vector<Identifiable> ids,
             message << " (" << ids[boost::source(e, graph)].getID() << ", "
                 << ids[boost::target(e, graph)].getID() << ')';
         throw NonPlanarGraph(message.str());
+    }
+
+    if (!result->nodeBoundary.empty()) {
+        constrainBoundary(*result,boundarySearchTimeLimit);
+        return result;
     }
 
     // Augment only the private drawing copy. No added edge reaches zone growth.

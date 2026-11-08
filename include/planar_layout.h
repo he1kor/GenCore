@@ -4,6 +4,7 @@
 #include "embedding_parameters.h"
 #include "graph.h"
 #include <cstdint>
+#include <chrono>
 #include <memory>
 #include <optional>
 #include <stdexcept>
@@ -19,11 +20,22 @@ public:
     using std::invalid_argument::invalid_argument;
 };
 
+class ConflictingBoundaryRules : public std::invalid_argument {
+public:
+    using std::invalid_argument::invalid_argument;
+};
+class BoundarySearchLimit : public std::invalid_argument {
+public:
+    using std::invalid_argument::invalid_argument;
+};
+
 // No Boost types escape the implementation. Original IDs remain stable even
 // when temporary edges/vertices are added to the drawing graph.
 struct Topology {
     std::vector<Identifiable> ids;
     std::vector<Edge> edges;
+    // Empty for legacy templates. Otherwise indexed in ids order.
+    std::vector<BoundaryPlacement> nodeBoundary;
     // Real neighbours in the ordinary initializer's cyclic order. Symmetry
     // can retain these faces instead of selecting an unrelated embedding.
     std::vector<std::vector<size_t>> rotation;
@@ -37,16 +49,26 @@ struct Topology {
 };
 
 std::shared_ptr<const Topology> makeTopology(std::vector<Identifiable> ids,
-    const std::vector<std::pair<Identifiable, Identifiable>>& edges);
+    const std::vector<std::pair<Identifiable, Identifiable>>& edges,
+    const NodeBoundaryMap& boundary = {},
+    std::chrono::milliseconds boundarySearchTimeLimit = {});
 
 template<hasID T>
-std::shared_ptr<const Topology> makeTopology(const Graph<T>& graph) {
+std::shared_ptr<const Topology> makeTopology(const Graph<T>& graph, const NodeBoundaryMap& boundary = {},
+    std::chrono::milliseconds boundarySearchTimeLimit = {}) {
     std::vector<std::pair<Identifiable, Identifiable>> edges;
     for (auto id : graph.getIDs()) {
         for (auto neighbour : graph.getNeighbours(id)) edges.emplace_back(id, neighbour);
     }
-    return makeTopology(graph.getIDs(), edges);
+    return makeTopology(graph.getIDs(), edges, boundary, boundarySearchTimeLimit);
 }
+
+// Builds a private triangulated scaffold without changing real graph faces.
+// A zero time limit retains the full deterministic search budget. Interactive
+// callers can cap checking time; expiry is inconclusive, never a contradiction.
+void constrainBoundary(Topology& topology, std::chrono::milliseconds searchTimeLimit = {});
+// Uses the geometric unbounded face, including component nesting and bridges.
+bool validBoundaryDrawing(const std::vector<DoubleVector2>& positions, const Topology& topology);
 
 // Exact determinant sign for finite double inputs, with a filtered fast path.
 int orientation(DoubleVector2 a, DoubleVector2 b, DoubleVector2 c);

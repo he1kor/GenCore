@@ -90,6 +90,26 @@ after each step. Completed results must also remain planar with distinct centers
 after flooring to tile coordinates. Dense layouts that cannot be separated at
 the requested tile resolution report a generation error.
 
+`makeTopology(graph, NodeBoundaryMap)` also accepts hard per-node
+`BoundaryPlacement::Any`, `Outer`, or `Inner` requirements. Outer nodes must be
+incident with the real graph's unbounded face; Inner nodes must not. Pass the
+returned topology into `initEmbed`. Unspecified nodes remain unrestricted.
+Constraints are checked during construction, magnet initialization, symmetry,
+refinement, and tile rounding. Private drawing edges never count as enclosure.
+Incompatible requirements throw `ConflictingBoundaryRules`; a bounded search
+that cannot certify a result throws `BoundarySearchLimit`, without claiming
+infeasibility. These rules do not pin coordinates or guarantee that grown zone
+tiles touch the map border. Application templates store the setting as optional
+node data `"boundary": "outer"` or `"boundary": "inner"`.
+
+Interactive callers can pass a third argument, for example
+`makeTopology(graph, rules, std::chrono::milliseconds(25))`, to limit boundary
+search time. Expiry throws `BoundarySearchLimit` and does not classify the rules
+as impossible. The default zero duration keeps the full deterministic search
+budget used by generation. Degree-two paths retain their face requirements when
+checking a rigid reduced graph, avoiding exhaustive searches caused solely by
+subdivided connections.
+
 `EdgeGeometryMap` maps an undirected endpoint-ID pair to
 `EdgeGeometry{preferredCenterDistance, distanceWeight}`. Distances are soft
 preferences in plane/tile units, and the default zero distance selects spacing
