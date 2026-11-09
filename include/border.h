@@ -13,11 +13,14 @@
 
 namespace tiles{
 
+    enum class PassMode { Ranged, Open, Closed };
+
     struct PassParams{
         size_t minPassWidth = 0;
         size_t maxPassWidth = 0;
         size_t minWallLength = 0;
         size_t maxWallLength = 200;
+        PassMode mode = PassMode::Ranged;
     };
 
     class Border{

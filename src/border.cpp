@@ -236,6 +236,10 @@ IntVector2 Border::Segment::getNextPos() const{
 
 void tiles::Border::initPassData(PassParams params){
     this->params = params;
+    nextPassIndex.clear();
+    wallStartingCombs.clear();
+    passStartingCombs.clear();
+    if (params.mode != PassMode::Ranged || segments.empty()) return;
 
     if (params.maxPassWidth < params.minPassWidth){
         throw std::invalid_argument(std::format("maxPassWidth ({}) is greater than minPassWidth ({})", params.maxPassWidth, params.minPassWidth));
@@ -406,6 +410,11 @@ size_t tiles::Border::generateWall(size_t i){
 }
 
 void tiles::Border::generatePasses(){
+    if (params.mode == PassMode::Open) {
+        for (auto& segment : segments) segment.disable();
+        return;
+    }
+    if (params.mode == PassMode::Closed) return;
     size_t i = 0;
     size_t size = segments.size();
     if (size < 2 || (wallStartingCombs[0] == 0 && passStartingCombs[0] == 0)) return;
